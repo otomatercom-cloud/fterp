@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="crm_lead_view_form_otm_ft" model="ir.ui.view">
+        <field name="name">crm.lead.form.otm.ft</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_otm_transition" type="object" string="Create Estimate"
+                        context="{'otm_action': 'create_estimate'}" invisible="otm_stage != 'assigned'" groups="otm_ft_pipeline.group_ft_sales_manager"/>
+                <button name="action_otm_transition" type="object" string="Submit to Manager"
+                        context="{'otm_action': 'submit_to_manager'}" invisible="otm_stage != 'estimate_draft'" groups="otm_ft_pipeline.group_ft_sales_manager"/>
+                <button name="action_otm_transition" type="object" string="Approve Estimate"
+                        context="{'otm_action': 'approve'}" invisible="otm_stage != 'estimate_manager_review'" groups="otm_ft_pipeline.group_ft_manager"/>
+                <button name="action_otm_transition" type="object" string="Reject"
+                        context="{'otm_action': 'reject'}" invisible="otm_stage != 'estimate_manager_review'" groups="otm_ft_pipeline.group_ft_manager"/>
+                <button name="action_otm_transition" type="object" string="Send to Client"
+                        context="{'otm_action': 'send_to_client'}" invisible="otm_stage != 'estimate_approved'" groups="otm_ft_pipeline.group_ft_sales_manager"/>
+                <button name="action_otm_transition" type="object" string="Client Approved"
+                        context="{'otm_action': 'client_approve'}" invisible="otm_stage != 'sent_to_client'" groups="otm_ft_pipeline.group_ft_sales_manager"/>
+                <button name="action_otm_transition" type="object" string="Client Wants Changes"
+                        context="{'otm_action': 'client_requests_changes'}" invisible="otm_stage != 'sent_to_client'" groups="otm_ft_pipeline.group_ft_sales_manager"/>
+                <button name="action_otm_transition" type="object" string="Mark Lost"
+                        context="{'otm_action': 'mark_lost'}" invisible="otm_stage != 'sent_to_client'" groups="otm_ft_pipeline.group_ft_sales_manager,otm_ft_pipeline.group_ft_manager"/>
+                <button name="action_otm_transition" type="object" string="Assign Lead"
+                        context="{'otm_action': 'assign'}" invisible="otm_stage != 'new'" groups="otm_ft_pipeline.group_ft_manager"/>
+                <button name="action_otm_transition" type="object" string="Assign Project Manager"
+                        context="{'otm_action': 'assign_project_manager'}" invisible="otm_stage != 'client_approved'" groups="otm_ft_pipeline.group_ft_manager"/>
+                <button name="action_otm_transition" type="object" string="Send to Procurement"
+                        context="{'otm_action': 'send_to_procurement'}" invisible="otm_stage != 'pm_assigned'" groups="otm_ft_pipeline.group_ft_project_manager"/>
+                <button name="action_otm_transition" type="object" string="Approve Prices"
+                        context="{'otm_action': 'approve_prices'}" invisible="otm_stage != 'procurement'" groups="otm_ft_pipeline.group_ft_procurement,otm_ft_pipeline.group_ft_manager"/>
+                <button name="action_otm_transition" type="object" string="Start Invoice"
+                        context="{'otm_action': 'start_invoice'}" invisible="otm_stage != 'procurement_approved'" groups="otm_ft_pipeline.group_ft_accounts"/>
+                <button name="action_otm_transition" type="object" string="Send Invoice to Sales"
+                        context="{'otm_action': 'send_to_sales'}" invisible="otm_stage != 'invoice_draft'" groups="otm_ft_pipeline.group_ft_accounts"/>
+                <button name="action_otm_transition" type="object" string="Send Invoice to Client"
+                        context="{'otm_action': 'send_to_client'}" invisible="otm_stage != 'invoice_with_sales'" groups="otm_ft_pipeline.group_ft_sales_manager"/>
+                <button name="action_otm_transition" type="object" string="Record Advance"
+                        context="{'otm_action': 'record_payment'}" invisible="otm_stage != 'awaiting_advance'" groups="otm_ft_pipeline.group_ft_sales_manager,otm_ft_pipeline.group_ft_accounts"/>
+                <button name="action_otm_transition" type="object" string="Verify Payment"
+                        context="{'otm_action': 'verify_payment'}" invisible="otm_stage != 'payment_verification'" groups="otm_ft_pipeline.group_ft_accounts"/>
+                <field name="otm_stage" widget="statusbar" statusbar_visible="new,assigned,estimate_draft,estimate_approved,sent_to_client,client_approved,procurement,invoice_draft,awaiting_advance,work_started"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <group name="otm_ft" string="FT Pipeline">
+                    <group>
+                        <field name="otm_origin"/>
+                        <field name="otm_project_manager_id"/>
+                    </group>
+                    <group>
+                        <field name="otm_estimate_amount"/>
+                        <field name="otm_procurement_amount"/>
+                        <field name="otm_advance_amount"/>
+                    </group>
+                </group>
+                <field name="otm_log_ids" readonly="1">
+                    <list>
+                        <field name="date"/>
+                        <field name="user_id"/>
+                        <field name="action"/>
+                        <field name="from_stage"/>
+                        <field name="to_stage"/>
+                    </list>
+                </field>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_search_otm_ft" model="ir.ui.view">
+        <field name="name">crm.lead.search.otm.ft</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_opportunities_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter name="otm_meta" string="Meta" domain="[('otm_origin', '=', 'meta')]"/>
+                <filter name="otm_walkin" string="Walk-in" domain="[('otm_origin', '=', 'walkin')]"/>
+                <separator/>
+                <group>
+                    <filter name="otm_group_stage" string="FT Stage" context="{'group_by': 'otm_stage'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_otm_ft_pipeline" model="ir.actions.act_window">
+        <field name="name">FT Pipeline</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'default_type': 'opportunity', 'search_default_otm_group_stage': 1}</field>
+        <field name="group_ids" eval="[(4, ref('group_ft_sales_manager')), (4, ref('group_ft_manager')), (4, ref('group_ft_project_manager')), (4, ref('group_ft_procurement')), (4, ref('group_ft_accounts'))]"/>
+    </record>
+
+    <menuitem id="menu_otm_ft_pipeline" name="FT Pipeline" parent="crm.crm_menu_root" action="action_otm_ft_pipeline" sequence="5"
+              groups="otm_ft_pipeline.group_ft_sales_manager,otm_ft_pipeline.group_ft_manager,otm_ft_pipeline.group_ft_project_manager,otm_ft_pipeline.group_ft_procurement,otm_ft_pipeline.group_ft_accounts"/>
+</odoo>

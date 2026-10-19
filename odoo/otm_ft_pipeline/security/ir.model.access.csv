@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_otm_ft_stage_log_user,otm.ft.stage.log user,model_otm_ft_stage_log,base.group_user,1,0,0,0
+access_crm_lead_ft_sales_manager,crm.lead ft sales manager,crm.model_crm_lead,group_ft_sales_manager,1,1,1,0
+access_crm_lead_ft_manager,crm.lead ft manager,crm.model_crm_lead,group_ft_manager,1,1,1,0
+access_crm_lead_ft_project_manager,crm.lead ft project manager,crm.model_crm_lead,group_ft_project_manager,1,0,0,0
+access_crm_lead_ft_procurement,crm.lead ft procurement,crm.model_crm_lead,group_ft_procurement,1,0,0,0
+access_crm_lead_ft_accounts,crm.lead ft accounts,crm.model_crm_lead,group_ft_accounts,1,0,0,0
