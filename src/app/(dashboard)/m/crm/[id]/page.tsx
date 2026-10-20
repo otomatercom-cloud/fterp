@@ -6,6 +6,8 @@ import { getDesigns, type Design } from "@/lib/odoo/leads";
 import { DesignAdd, DesignList } from "@/components/design-panel";
 import { getMilestones, getJournals as getJournalsFin, type MilestoneData } from "@/lib/odoo/leads";
 import { PaymentSchedule } from "@/components/payment-schedule";
+import { getRates, getEstRevisions, type Rate, type EstRev } from "@/lib/odoo/leads";
+import { EstimateRevisions } from "@/components/estimate-revisions";
 import { getEstimate, getInvoice, getJournals, getLead, getCosting, getLogs, getProcurement, getPurchaseOrders, portalUserInfo, roleUsers } from "@/lib/odoo/leads";
 import { ACTION_LABELS, FIELD_STAGES, STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
 import { StageActions } from "@/components/stage-actions";
@@ -43,6 +45,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   }
   let designs: Design[] = [];
   try { designs = await getDesigns(s, id); } catch { /* module not upgraded yet */ }
+  let rates: Rate[] = [], revs: EstRev[] = [];
+  try {
+    if (lead.otm_stage === "estimate_draft") rates = (await getRates(s)).rates;
+    revs = await getEstRevisions(s, id);
+  } catch { /* module not upgraded yet */ }
   let ms: MilestoneData | null = null, msJournals: { id: number; name: string }[] = [];
   if (["invoice_draft", "invoice_with_sales", "awaiting_advance", "payment_verification", "work_started", "handover", "completed"].includes(lead.otm_stage) && ["base.group_system", "otm_ft_pipeline.group_ft_accounts", "otm_ft_pipeline.group_ft_manager"].some((g) => s.groups.includes(g))) {
     try { [ms, msJournals] = await Promise.all([getMilestones(s, id), getJournalsFin(s)]); } catch { /* module not upgraded yet */ }
@@ -81,7 +88,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       {costing!.lines.length > 0 && <Card title="Availability & costing (Procurement check)"><CostingEditor key={costing!.cost + ":" + costing!.lines.length + ":" + lead.otm_stage} leadId={lead.id} data={costing!} editable={lead.otm_stage === "procurement_check"} /></Card>}
       {ms && <Card title="Payment schedule (milestones)"><PaymentSchedule key={ms.rows.map((r) => r.id + r.status).join()} leadId={lead.id} data={ms} journals={msJournals} canPlan={ms.can_plan} /></Card>}
       <Card title="Design & drawings">{canAddDesign && <div className="mb-3"><DesignAdd leadId={lead.id} /></div>}<DesignList items={designs} /></Card>
-      <Card title="Estimate"><EstimateEditor key={est!.lines.length + ":" + est!.total} leadId={lead.id} initial={est!.lines} untaxed={est!.untaxed} tax={est!.tax} taxName={est!.tax_name} taxRate={est!.tax_rate} editable={lead.otm_stage === "estimate_draft"} /></Card>
+      <Card title="Estimate"><EstimateEditor rates={rates} key={est!.lines.length + ":" + est!.total} leadId={lead.id} initial={est!.lines} untaxed={est!.untaxed} tax={est!.tax} taxName={est!.tax_name} taxRate={est!.tax_rate} editable={lead.otm_stage === "estimate_draft"} /></Card>
+      {revs.length > 0 && <Card title="Estimate revisions"><EstimateRevisions leadId={lead.id} revs={revs} canRestore={lead.otm_stage === "estimate_draft" && (s.groups.includes("otm_ft_pipeline.group_ft_sales_manager") || s.groups.includes("base.group_system"))} /></Card>}
       {(lead.otm_stage === "procurement" || proc!.lines.length > 0) && <Card title="Procurement prices"><ProcurementEditor key={proc!.total + ":" + proc!.lines.length} leadId={lead.id} initial={proc!.lines} total={proc!.total} estimate={lead.otm_estimate_amount} editable={lead.otm_stage === "procurement" && pos!.orders.length === 0} /></Card>}
       {(lead.otm_stage === "procurement" || pos!.orders.length > 0) && <Card title="Purchase orders"><PurchaseOrders key={pos!.pending + ":" + pos!.orders.length} leadId={lead.id} data={pos!} canCreate={lead.otm_stage === "procurement"} /></Card>}
       {(invoice || ["invoice_draft", "payment_verification"].includes(lead.otm_stage)) && <Card title="Advance invoice"><InvoicePanel leadId={lead.id} stage={lead.otm_stage} invoice={invoice} journals={journals} /></Card>}

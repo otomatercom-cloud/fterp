@@ -33,7 +33,7 @@ export async function setFieldAction(leadId: number, field: string, value: numbe
   return {};
 }
 
-const lines = z.array(z.object({ name: z.string().trim().min(1).max(200), qty: z.number().positive().max(1e6), price: z.number().min(0).max(1e9) })).min(1).max(200);
+const lines = z.array(z.object({ name: z.string().trim().min(1).max(200), qty: z.number().positive().max(1e6), price: z.number().min(0).max(1e9), category: z.string().max(20).optional(), unit: z.string().max(12).optional() })).min(1).max(200);
 export async function saveEstimateAction(leadId: number, input: unknown): Promise<R> {
   const p = lines.safeParse(input);
   if (!id.safeParse(leadId).success || !p.success) return { error: "Each line needs a description, quantity above 0 and a price of 0 or more." };

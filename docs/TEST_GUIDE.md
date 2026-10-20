@@ -91,3 +91,10 @@ Quick checks: sales1 vs sales2 see different leads; pm1 vs pm2 see different pro
 6. **Finance & Accounts** menu: KPIs (contract, invoiced, collected, outstanding), collection gauges, margin bars per project (estimate excl. tax − procurement cost), **Overdue payments** table (days overdue, last follow-up), all-projects table.
 7. Final milestone only after **Handover**; Retention only after **Completed** (button replaced by the reason text before that).
 8. Negative: `demo.manager` can set the plan, view and log follow-ups but has no invoice/payment buttons; `demo.sales1`/PM/procurement cannot open Finance (menu hidden, API refuses); editing the plan cannot change or remove an invoiced milestone.
+
+## Scenario H — Estimation & BOQ (rate library, categories, revisions)
+1. Login `demo.manager@ftdemo.com` (or procurement) → **Estimation & BOQ** → *Rate library*: 22 demo items with rate, cost and margin %. Add a new item (code, name, category, unit, rate, cost); edit one; archive one. Sales Manager sees the library without cost/margin and cannot edit.
+2. Login `demo.sales1@ftdemo.com` → a lead at **Estimate draft** → *Estimate*: use **+ From rate library…** to add items (category and unit are filled, price = library rate). Change qty; "By category" subtotals show under the lines. Save.
+3. **Submit to Procurement** → *Estimate revisions* card shows Rev 1. Login `demo.procurement` → **Return to Sales** (or Confirm costing) → a new revision is kept only when the content changed.
+4. As sales1 edit and re-submit: Rev N shows the difference vs the previous revision (+/- amount). Expand a revision to see its lines; **Restore into draft** (Sales Manager, only at Estimate draft) puts those lines back in the editor.
+5. **Estimation & BOQ** page → *Estimates in progress*: lines, revisions, total and category split per lead.

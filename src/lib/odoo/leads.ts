@@ -29,7 +29,7 @@ export function runTransition(s: Session, id: number, action: string) {
 }
 
 export type LeadDetail = Lead & { phone: string | false; email_from: string | false; description: string | false; otm_estimate_amount: number; otm_procurement_amount: number; otm_advance_amount: number; log_ids: number[] };
-export type Estimate = { order: string | false; total: number; untaxed: number; tax: number; tax_name: string | false; tax_rate: number; lines: { name: string; qty: number; price: number; subtotal: number }[] };
+export type Estimate = { order: string | false; total: number; untaxed: number; tax: number; tax_name: string | false; tax_rate: number; lines: { name: string; qty: number; price: number; subtotal: number; category: string; unit: string }[] };
 export type LogRow = { id: number; date: string; user_id: [number, string]; action: string; to_stage: string };
 const co = (s: Session) => ({ companyIds: [s.companyId] });
 
@@ -47,7 +47,7 @@ export const roleUsers = (s: Session, role: "sales_manager" | "project_manager")
   callKw<{ id: number; name: string }[]>(s.sessionId, "crm.lead", "otm_role_users", [role], {}, co(s));
 export const createLead = (s: Session, vals: Record<string, unknown>) => callKw<number>(s.sessionId, "crm.lead", "create", [vals], {}, co(s));
 export const setLeadField = (s: Session, id: number, field: string, value: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_set_field", [[id], field, value], {}, co(s));
-export const saveEstimate = (s: Session, id: number, lines: { name: string; qty: number; price: number }[]) =>
+export const saveEstimate = (s: Session, id: number, lines: { name: string; qty: number; price: number; category?: string; unit?: string }[]) =>
   callKw<number>(s.sessionId, "crm.lead", "otm_save_estimate", [[id], lines], {}, co(s));
 
 export type InvoiceInfo = { id: number; name: string; state: string; total: number; untaxed: number; tax: number; residual: number; payment_state: string } | false;
@@ -173,3 +173,14 @@ export const followupMilestone = (s: Session, id: number, msId: number, note: st
 export type FinRow = { id: number; name: string; customer: string; stage: string; contract: number; revenue: number; invoiced: number; paid: number; outstanding: number; overdue: number; cost: number; margin: number; margin_pct: number; planned: boolean };
 export type Overdue = { lead_id: number; lead: string; customer: string; milestone_id: number; milestone: string; residual: number; due: string | false; days: number; followup_note: string; followup_date: string | false };
 export const getFinance = (s: Session) => callKw<{ rows: FinRow[]; overdue: Overdue[]; can_bill: boolean }>(s.sessionId, "crm.lead", "otm_finance_overview", [], {}, co(s));
+
+// ---- estimation & BOQ: rate library, revisions ----
+export type Rate = { id: number; code: string; name: string; category: string; unit: string; rate: number; cost: number };
+export const getRates = (s: Session) => callKw<{ can_manage: boolean; rates: Rate[] }>(s.sessionId, "crm.lead", "otm_rates", [], {}, co(s));
+export const saveRate = (s: Session, vals: Partial<Rate>) => callKw<boolean>(s.sessionId, "crm.lead", "otm_save_rate", [vals], {}, co(s));
+export const archiveRate = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_archive_rate", [id], {}, co(s));
+export type EstRev = { id: number; number: number; reason: string; user: string; date: string; untaxed: number; total: number; lines: { name: string; qty: number; price: number; category: string; unit: string }[] };
+export const getEstRevisions = (s: Session, id: number) => callKw<EstRev[]>(s.sessionId, "crm.lead", "otm_estimate_revisions", [[id]], {}, co(s));
+export const restoreRevision = (s: Session, id: number, revId: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_restore_revision", [[id], revId], {}, co(s));
+export type BoqRow = { id: number; name: string; customer: string; stage: string; untaxed: number; lines: number; revisions: number; categories: Record<string, number> };
+export const getBoqOverview = (s: Session) => callKw<BoqRow[]>(s.sessionId, "crm.lead", "otm_boq_overview", [], {}, co(s));

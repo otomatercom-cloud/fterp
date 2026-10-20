@@ -11,3 +11,4 @@ from . import costing_line
 from . import design
 from . import milestone
 from . import finance
+from . import boq

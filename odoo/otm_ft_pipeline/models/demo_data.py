@@ -86,6 +86,22 @@ def _png(rgb):
 
 
 PALETTE = [(107, 41, 59), (232, 191, 126), (217, 143, 160), (196, 138, 106), (90, 110, 120), (150, 130, 110)]
+LINE_META = {"Living & dining joinery, wardrobes": ("joinery", "ls"), "False ceiling & lighting": ("ceiling", "ls"), "Flooring & wall finishes": ("flooring", "ls"), "Kitchen cabinetry & fittings": ("kitchen", "ls")}
+# (code, name, category, unit, rate, cost)
+DEMO_RATES = [
+    ("DEMO-JN-001", "Wardrobe, laminate finish", "joinery", "sqm", 950, 640), ("DEMO-JN-002", "Wardrobe, veneer finish", "joinery", "sqm", 1250, 860),
+    ("DEMO-JN-003", "TV unit with wall panel", "joinery", "rm", 1800, 1250), ("DEMO-JN-004", "Vanity unit", "joinery", "nos", 2400, 1650),
+    ("DEMO-CL-001", "Gypsum false ceiling, plain", "ceiling", "sqm", 120, 78), ("DEMO-CL-002", "Gypsum ceiling with cove lighting", "ceiling", "sqm", 185, 120),
+    ("DEMO-FL-001", "Porcelain tile flooring 60x60", "flooring", "sqm", 140, 92), ("DEMO-FL-002", "Engineered wood flooring", "flooring", "sqm", 210, 150),
+    ("DEMO-FL-003", "Marble flooring", "flooring", "sqm", 360, 250), ("DEMO-WL-001", "Emulsion paint, 2 coats", "wall", "sqm", 28, 16),
+    ("DEMO-WL-002", "Wallpaper supply and fix", "wall", "sqm", 85, 55), ("DEMO-WL-003", "Fluted wall panel", "wall", "sqm", 310, 210),
+    ("DEMO-KT-001", "Kitchen base cabinets", "kitchen", "rm", 1450, 980), ("DEMO-KT-002", "Kitchen wall cabinets", "kitchen", "rm", 1150, 780),
+    ("DEMO-KT-003", "Quartz countertop", "kitchen", "rm", 820, 560), ("DEMO-LT-001", "Recessed LED downlight", "lighting", "nos", 65, 38),
+    ("DEMO-LT-002", "Decorative pendant light", "lighting", "nos", 480, 310), ("DEMO-LT-003", "LED strip lighting", "lighting", "rm", 45, 26),
+    ("DEMO-ME-001", "Electrical point, supply and fix", "mep", "nos", 55, 34), ("DEMO-ME-002", "Plumbing point, supply and fix", "mep", "nos", 140, 90),
+    ("DEMO-FU-001", "Loose sofa set, 3+2", "furniture", "set", 5200, 3600), ("DEMO-FU-002", "Dining table, 6 seater", "furniture", "nos", 3400, 2300),
+    ("DEMO-OT-001", "Project supervision and site clean-up", "other", "ls", 4500, 3000),
+]
 VENDORS = ["Al Noor Timber Trading", "Gulf Gypsum LLC", "Stonehill Marble", "Lumina Lighting"]
 
 
@@ -136,6 +152,9 @@ class CrmLead(models.Model):
         users = {SM: du["sales1"], MGR: du["manager"], PM: du["pm1"], PROC: du["procurement"], ACC: du["accounts"]}
         sms = [du["sales1"], du["sales2"]]
         pms = [du["pm1"], du["pm2"]]
+        for code, rn, cat_, unit_, rate_, cost_ in DEMO_RATES:
+            if not env["otm.ft.rate"].with_context(active_test=False).search_count([("code", "=", code), ("company_id", "=", self.env.company.id)]):
+                env["otm.ft.rate"].create({"code": code, "name": rn, "category": cat_, "unit": unit_, "rate": rate_, "cost": cost_, "company_id": self.env.company.id})
         for v in VENDORS:  # tagged vendors so removal is clean
             if not env["res.partner"].search([("name", "=", v)], limit=1):
                 env["res.partner"].create({"name": v, "company_type": "company", "ref": DEMO_REF})
@@ -164,7 +183,7 @@ class CrmLead(models.Model):
                 tax = lead._otm_sale_tax()
                 order = env["sale.order"].create({
                     "partner_id": partner.id, "opportunity_id": lead.id,
-                    "order_line": [(0, 0, {"name": n, "product_uom_qty": 1, "price_unit": round(est * share, 2), "tax_ids": [(6, 0, tax.ids)]}) for n, share in EST_LINES],
+                    "order_line": [(0, 0, {"name": n, "product_uom_qty": 1, "price_unit": round(est * share, 2), "tax_ids": [(6, 0, tax.ids)], "otm_category": LINE_META[n][0], "otm_unit": LINE_META[n][1]}) for n, share in EST_LINES],
                 })
                 if rank >= ORDER.index("procurement_check"):
                     lead.otm_estimate_amount = order.amount_untaxed
@@ -202,6 +221,10 @@ class CrmLead(models.Model):
                         skipped += 1
                         lead.otm_invoice_id = False
 
+            if rank >= ORDER.index("procurement_check") and est:
+                cur = lead._otm_est_lines()
+                lead._otm_snapshot_estimate("submit_to_procurement", lines=[dict(l, price=round(l["price"] * 0.92, 2)) for l in cur])
+                lead._otm_snapshot_estimate("return_to_sales" if rank < ORDER.index("estimate_manager_review") else "approve")
             if rank >= ORDER.index("estimate_draft") and est:
                 items = DESIGN_NAMES[: 2 + i % 3] + ([("Kitchen shop drawing", "shop_drawing"), ("Wardrobe shop drawing", "shop_drawing")] if rank >= ORDER.index("pm_assigned") else [])
                 for k, (dn, dk) in enumerate(items):
@@ -309,6 +332,7 @@ class CrmLead(models.Model):
                     lead.order_ids.filtered(lambda o: o.state in ("draft", "cancel")).unlink()
             except Exception:
                 pass
+        env["otm.ft.rate"].with_context(active_test=False).search([("code", "=like", "DEMO-%")]).unlink()
         removed = len(leads)
         try:
             with env.cr.savepoint():

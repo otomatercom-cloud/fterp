@@ -200,6 +200,10 @@ class CrmLead(models.Model):
         if action == "record_payment" and self.otm_advance_amount <= 0:
             raise UserError(self.env._("Enter the advance amount received."))
 
+    def _otm_snapshot_if_estimate(self, action):
+        if action in ("submit_to_procurement", "confirm_costing", "return_to_sales", "approve", "reject", "send_to_client", "client_approve", "client_requests_changes"):
+            self._otm_snapshot_estimate(action)
+
     def action_otm_transition(self):
         """Single entry point; buttons pass context {'otm_action': <name>}."""
         action = self.env.context.get("otm_action")
@@ -211,6 +215,7 @@ class CrmLead(models.Model):
             if not set(roles) & set(lead._otm_user_roles()):
                 raise UserError(self.env._("You are not allowed to perform this step."))
             lead._otm_guard(action)
+            lead._otm_snapshot_if_estimate(action)
             vals = {"otm_stage": to_stage}
             if action == "submit_to_procurement":
                 latest = lead.order_ids.sorted("id")[-1:]
@@ -277,7 +282,7 @@ class CrmLead(models.Model):
             "tax_name": tax.name if tax else False,
             "tax_rate": tax.amount if tax and tax.amount_type == "percent" else 0.0,
             "lines": [
-                {"name": l.name, "qty": l.product_uom_qty, "price": l.price_unit, "subtotal": l.price_subtotal}
+                {"name": l.name, "qty": l.product_uom_qty, "price": l.price_unit, "subtotal": l.price_subtotal, "category": l.otm_category or "other", "unit": l.otm_unit or ""}
                 for l in order.order_line if not l.display_type
             ],
         }
@@ -296,7 +301,8 @@ class CrmLead(models.Model):
             name, qty, price = str(l.get("name", "")).strip()[:200], float(l.get("qty", 0)), float(l.get("price", 0))
             if not name or qty <= 0 or price < 0:
                 raise UserError(self.env._("Each line needs a description, a quantity above 0 and a price of 0 or more."))
-            cmds.append((0, 0, {"name": name, "product_uom_qty": qty, "price_unit": price, "tax_ids": [(6, 0, tax.ids)]}))
+            cat = l.get("category") if l.get("category") in ("joinery", "ceiling", "flooring", "wall", "kitchen", "lighting", "mep", "furniture", "other") else "other"
+            cmds.append((0, 0, {"name": name, "product_uom_qty": qty, "price_unit": price, "tax_ids": [(6, 0, tax.ids)], "otm_category": cat, "otm_unit": str(l.get("unit") or "")[:12]}))
         if not self.partner_id:
             self.partner_id = self.env["res.partner"].create({
                 "name": self.partner_name or self.name, "phone": self.phone, "email": self.email_from,
