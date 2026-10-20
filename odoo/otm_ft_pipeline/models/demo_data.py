@@ -250,6 +250,30 @@ class CrmLead(models.Model):
                 for k, pc in enumerate(marks):
                     when = created + timedelta(days=age * 0.5 + k * max(age * 0.1, 1))
                     env["otm.ft.site.update"].create({"lead_id": lead.id, "percent": pc, "note": notes[k % 5], "user_id": lead.otm_project_manager_id.id, "date": min(when, now)})
+
+            if rank >= ORDER.index("invoice_draft") and est:
+                untaxed_total = lead.order_ids.sorted("id")[-1:].amount_untaxed
+                for k, (nm, kd, pc, tr) in enumerate([("Advance", "advance", 30, 0), ("Progress payment", "progress", 30, 50), ("Final payment", "final", 35, 0), ("Retention release", "retention", 5, 0)]):
+                    ms = env["otm.ft.milestone"].create({"lead_id": lead.id, "sequence": (k + 1) * 10, "name": nm, "kind": kd, "percent": pc, "trigger_progress": tr,
+                                                         "invoice_id": lead.otm_invoice_id.id if kd == "advance" and lead.otm_invoice_id else False})
+                    eligible = (kd == "progress" and rank >= ORDER.index("work_started") and lead.otm_progress >= 50) or (kd == "final" and rank >= ORDER.index("handover")) or (kd == "retention" and stage == "completed")
+                    if not eligible:
+                        continue
+                    overdue = (kd != "final" and i % 2 == 1) or (stage != "completed" and kd == "final")
+                    try:
+                        with env.cr.savepoint():
+                            today = fields.Date.context_today(lead)
+                            move = env["account.move"].create({
+                                "move_type": "out_invoice", "partner_id": lead.partner_id.id, "invoice_origin": lead.name,
+                                "invoice_date": today - timedelta(days=45), "invoice_date_due": today - timedelta(days=15 + i) if overdue else today + timedelta(days=20),
+                                "invoice_line_ids": [(0, 0, {"name": f"{nm} - {lead.name}", "quantity": 1, "price_unit": round(untaxed_total * pc / 100.0, 2), "tax_ids": [(6, 0, lead._otm_sale_tax().ids)]})],
+                            })
+                            move.action_post()
+                            ms.write({"invoice_id": move.id, "due_date": move.invoice_date_due})
+                            if not overdue and journal:
+                                env["account.payment.register"].with_context(active_model="account.move", active_ids=move.ids).create({"journal_id": journal.id}).action_create_payments()
+                    except Exception:
+                        skipped += 1
         for pre, lead_name in DEMO_CUSTOMERS:
             lead = Lead.search([("name", "=", lead_name), ("tag_ids", "in", tag.ids)], limit=1)
             if lead.partner_id:

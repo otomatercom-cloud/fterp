@@ -159,3 +159,17 @@ export const addDesign = (s: Session, id: number, name: string, kind: string, du
 export const addDesignFile = (s: Session, designId: number, filename: string, b64: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_design_file", [designId, filename, b64], {}, co(s));
 export const designAction = (s: Session, designId: number, action: string, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_design_action", [designId, action, note], {}, co(s));
 export const getDesignFile = (s: Session, attId: number) => callKw<{ mimetype: string; data: string }>(s.sessionId, "crm.lead", "otm_design_file", [attId], {}, co(s));
+
+// ---- finance: payment milestones, receivables, profitability ----
+export type MsStatus = "planned" | "draft" | "invoiced" | "overdue" | "paid";
+export type MsKind = "advance" | "progress" | "final" | "retention" | "other";
+export type Milestone = { id: number; name: string; kind: MsKind; percent: number; trigger: number; amount: number; amount_total: number; status: MsStatus; invoice: string; invoice_id: number | false; residual: number; due: string | false; blocker: string; followup_note: string; followup_date: string | false };
+export type MilestoneData = { untaxed: number; tax: number; total: number; cost: number; invoiced: number; outstanding: number; can_plan: boolean; can_bill: boolean; rows: Milestone[] };
+export const getMilestones = (s: Session, id: number) => callKw<MilestoneData>(s.sessionId, "crm.lead", "otm_milestones", [[id]], {}, co(s));
+export const setMilestones = (s: Session, id: number, lines: { name: string; kind: string; percent: number; trigger: number }[]) => callKw<boolean>(s.sessionId, "crm.lead", "otm_set_milestones", [[id], lines], {}, co(s));
+export const invoiceMilestone = (s: Session, id: number, msId: number) => callKw<number>(s.sessionId, "crm.lead", "otm_ms_invoice", [[id], msId], {}, co(s));
+export const payMilestone = (s: Session, id: number, msId: number, journalId: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_ms_pay", [[id], msId, journalId], {}, co(s));
+export const followupMilestone = (s: Session, id: number, msId: number, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_ms_followup", [[id], msId, note], {}, co(s));
+export type FinRow = { id: number; name: string; customer: string; stage: string; contract: number; revenue: number; invoiced: number; paid: number; outstanding: number; overdue: number; cost: number; margin: number; margin_pct: number; planned: boolean };
+export type Overdue = { lead_id: number; lead: string; customer: string; milestone_id: number; milestone: string; residual: number; due: string | false; days: number; followup_note: string; followup_date: string | false };
+export const getFinance = (s: Session) => callKw<{ rows: FinRow[]; overdue: Overdue[]; can_bill: boolean }>(s.sessionId, "crm.lead", "otm_finance_overview", [], {}, co(s));

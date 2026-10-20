@@ -81,3 +81,13 @@ Password for all: `Demo@2026`. Logins: `demo.sales1@ftdemo.com`, `demo.sales2@�
 Data: 32 leads across all stages with estimates, costing, design items (all statuses, with images), purchase orders, invoices/payments, tasks and snags, joinery, installations with before/after photos, site updates and history.
 Reload: Remove demo data, then Load again (internal demo users are archived and reactivated; portal users are deleted and recreated).
 Quick checks: sales1 vs sales2 see different leads; pm1 vs pm2 see different projects; customer1 sees only its own project; customer2 can approve the estimate; customer3 can confirm handover only when snags are closed.
+
+## Scenario G — Finance & Accounts (milestones, follow-up, profitability)
+1. Login `demo.accounts@ftdemo.com`. Open a lead at **Work started** (e.g. *Business Bay Office Fit-out*) → card **Payment schedule**.
+2. No plan yet? **Create plan** (Advance 30 / Progress 30 @ 50% site progress / Final 35 / Retention 5; total must be 100%) → Save.
+3. Progress milestone: if site progress is below the trigger it shows "Site progress must reach 50%". As `demo.pm1` add a site update ≥ 50%, then as Accounts click **Create & post invoice** (tax from company default; amount = % of the estimate excl. tax).
+4. Select journal → **Register payment** → status *Paid*, balance 0.
+5. Leave one invoice unpaid past its due date → status *Overdue*. Type a note → **Log follow-up** (shows on the card and in the lead chatter).
+6. **Finance & Accounts** menu: KPIs (contract, invoiced, collected, outstanding), collection gauges, margin bars per project (estimate excl. tax − procurement cost), **Overdue payments** table (days overdue, last follow-up), all-projects table.
+7. Final milestone only after **Handover**; Retention only after **Completed** (button replaced by the reason text before that).
+8. Negative: `demo.manager` can set the plan, view and log follow-ups but has no invoice/payment buttons; `demo.sales1`/PM/procurement cannot open Finance (menu hidden, API refuses); editing the plan cannot change or remove an invoiced milestone.

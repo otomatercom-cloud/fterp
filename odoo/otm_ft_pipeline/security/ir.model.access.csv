@@ -13,3 +13,4 @@ access_otm_ft_joinery_user,otm.ft.joinery user,model_otm_ft_joinery,base.group_u
 access_otm_ft_install_user,otm.ft.install user,model_otm_ft_install,base.group_user,1,0,0,0
 access_otm_ft_costing_user,otm.ft.costing.line user,model_otm_ft_costing_line,base.group_user,1,0,0,0
 access_otm_ft_design_user,otm.ft.design user,model_otm_ft_design,base.group_user,1,0,0,0
+access_otm_ft_milestone_user,otm.ft.milestone user,model_otm_ft_milestone,base.group_user,1,0,0,0

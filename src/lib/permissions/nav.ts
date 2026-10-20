@@ -13,7 +13,7 @@ export const NAV: NavItem[] = [
   { slug: "joinery", label: "Joinery Workshop", icon: "Hammer", groups: ["otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_procurement"] },
   { slug: "procurement", label: "Procurement", icon: "ShoppingCart", groups: ["purchase.group_purchase_user", "purchase.group_purchase_manager"] },
   { slug: "installation", label: "Installation", icon: "HardHat" },
-  { slug: "finance", label: "Finance & Accounts", icon: "Landmark", groups: ["account.group_account_invoice", "account.group_account_manager"] },
+  { slug: "finance", label: "Finance & Accounts", icon: "Landmark", groups: ["otm_ft_pipeline.group_ft_accounts", "otm_ft_pipeline.group_ft_manager", "account.group_account_manager"] },
   { slug: "petty-cash", label: "Petty Cash", icon: "Wallet" },
   { slug: "hr", label: "HR & Payroll", icon: "UserCog", groups: ["hr.group_hr_user", "hr.group_hr_manager"] },
   { slug: "manufacturing", label: "Manufacturing", icon: "Factory", groups: ["mrp.group_mrp_user", "mrp.group_mrp_manager"] },
