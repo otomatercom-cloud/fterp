@@ -9,4 +9,4 @@ export function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/((?!api/health|_next/static|_next/image|favicon.ico).*)"] };
+export const config = { matcher: ["/((?!api/health|_next/static|_next/image|favicon.ico|.*\\.(?:jpg|jpeg|png|svg|webp|ico)$).*)"] };

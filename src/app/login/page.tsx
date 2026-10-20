@@ -7,7 +7,7 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-dvh place-items-center bg-bg p-4">
       <form action={action} className="w-full max-w-sm overflow-hidden rounded-lg border border-line bg-card shadow-sm">
-        <div className="bg-sidebar pb-2 pt-2">
+        <div className="bg-brand pb-2 pt-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/ft-logo.jpg" alt="FT Interior Design & Architecture" className="mx-auto w-52" />
         </div>
