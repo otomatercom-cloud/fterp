@@ -20,3 +20,7 @@ access_otm_ft_receipt_user,otm.ft.receipt user,model_otm_ft_receipt,base.group_u
 access_otm_ft_ic_order_user,otm.ft.ic.order user,model_otm_ft_ic_order,base.group_user,1,0,0,0
 access_otm_ft_ic_line_user,otm.ft.ic.line user,model_otm_ft_ic_line,base.group_user,1,0,0,0
 access_otm_ft_petty_user,otm.ft.petty user,model_otm_ft_petty,base.group_user,1,0,0,0
+access_otm_ft_employee_user,otm.ft.employee user,model_otm_ft_employee,base.group_user,1,0,0,0
+access_otm_ft_attendance_user,otm.ft.attendance user,model_otm_ft_attendance,base.group_user,1,0,0,0
+access_otm_ft_leave_user,otm.ft.leave user,model_otm_ft_leave,base.group_user,1,0,0,0
+access_otm_ft_payslip_user,otm.ft.payslip user,model_otm_ft_payslip,base.group_user,1,0,0,0

@@ -219,3 +219,21 @@ export const cancelPetty = (s: Session, id: number) => callKw<boolean>(s.session
 export const getPettyFile = (s: Session, id: number) => callKw<{ mimetype: string; data: string }>(s.sessionId, "crm.lead", "otm_petty_file", [id], {}, co(s));
 export const topupPetty = (s: Session, userId: number, amount: number, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_petty_topup", [userId, amount, note], {}, co(s));
 export const reviewPetty = (s: Session, id: number, decision: string, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_petty_review", [id, decision, note], {}, co(s));
+
+// ---- HR & payroll ----
+export type Employee = { id: number; name: string; code: string; user_id: number | false; user: string; kind: "office" | "site"; designation: string; pay_type: "monthly" | "daily"; rate: number; join_date: string | false; phone: string };
+export type AttRow = { id: number; name: string; kind: string; status: "" | "present" | "half" | "absent" | "leave"; lead_id: number; month: { present: number; half: number; absent: number; leave: number } };
+export type LeaveRow = { id: number; employee: string; employee_id: number; from: string; to: string; days: number; reason: string; status: "pending" | "approved" | "rejected"; reviewed_by: string; reject_reason: string; own: boolean };
+export type Payslip = { id: number; employee: string; employee_id: number; pay_type: string; rate: number; month: string; paid_days: number; working_days: number; base: number; allowances: number; deductions: number; net: number; status: "draft" | "approved" | "paid"; note: string };
+export const getEmployees = (s: Session) => callKw<{ can_manage: boolean; employees: Employee[]; users: { id: number; name: string }[] }>(s.sessionId, "crm.lead", "otm_hr_employees", [], {}, co(s));
+export const saveEmployee = (s: Session, vals: Record<string, unknown>) => callKw<boolean>(s.sessionId, "crm.lead", "otm_hr_save_employee", [vals], {}, co(s));
+export const archiveEmployee = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_hr_archive_employee", [id], {}, co(s));
+export const getAttendance = (s: Session, day: string) => callKw<{ leads: { id: number; name: string }[]; rows: AttRow[] }>(s.sessionId, "crm.lead", "otm_hr_attendance", [day], {}, co(s));
+export const markAttendance = (s: Session, day: string, rows: { id: number; status: string; lead_id: number }[]) => callKw<number>(s.sessionId, "crm.lead", "otm_hr_mark", [day, rows], {}, co(s));
+export const getLeaves = (s: Session) => callKw<{ has_employee: boolean; entitlement: number; taken: number; can_review: boolean; mine: LeaveRow[]; pending: LeaveRow[] }>(s.sessionId, "crm.lead", "otm_hr_leaves", [], {}, co(s));
+export const requestLeave = (s: Session, from: string, to: string, reason: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_hr_leave_request", [from, to, reason], {}, co(s));
+export const reviewLeave = (s: Session, id: number, decision: string, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_hr_leave_review", [id, decision, note], {}, co(s));
+export const getPayroll = (s: Session, month: string) => callKw<{ can_generate: boolean; can_approve: boolean; can_pay: boolean; full: boolean; slips: Payslip[] }>(s.sessionId, "crm.lead", "otm_hr_payroll", [month], {}, co(s));
+export const generatePayroll = (s: Session, month: string) => callKw<number>(s.sessionId, "crm.lead", "otm_hr_payroll_generate", [month], {}, co(s));
+export const editPayslip = (s: Session, id: number, allowances: number, deductions: number, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_hr_payslip_edit", [id, allowances, deductions, note], {}, co(s));
+export const payslipAction = (s: Session, id: number, action: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_hr_payslip_action", [id, action], {}, co(s));

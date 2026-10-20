@@ -356,6 +356,38 @@ class CrmLead(models.Model):
                 if n % 2 == 0:
                     env["ir.attachment"].create({"name": "receipt.png", "datas": base64.b64encode(_png(PALETTE[(hi + n) % 6])), "mimetype": "image/png", "res_model": "otm.ft.petty", "res_id": t.id})
         env["otm.ft.petty"].create({"holder_id": du["pm1"].id, "lead_id": work[0].id if work else False, "kind": "expense", "category": "material", "amount": 780, "date": today, "description": "Marine plywood, 12 sheets (above limit: Manager approval)", "status": "pending"})
+        # ---- HR: employees, attendance (last 35 days), leave, payslips for last month ----
+        Emp, Att = env["otm.ft.employee"], env["otm.ft.attendance"]
+        staff = [("DEMO-S1", "Demo Sales Manager 1", "office", "monthly", 9000, "Sales Manager", du["sales1"]), ("DEMO-S2", "Demo Sales Manager 2", "office", "monthly", 8500, "Sales Manager", du["sales2"]),
+                 ("DEMO-M1", "Demo Manager", "office", "monthly", 15000, "Operations Manager", du["manager"]), ("DEMO-P1", "Demo Project Manager 1", "office", "monthly", 11000, "Project Manager", du["pm1"]),
+                 ("DEMO-P2", "Demo Project Manager 2", "office", "monthly", 10500, "Project Manager", du["pm2"]), ("DEMO-PR", "Demo Procurement", "office", "monthly", 7500, "Procurement Officer", du["procurement"]),
+                 ("DEMO-AC", "Demo Accounts", "office", "monthly", 8000, "Accountant", du["accounts"])]
+        workers = [("DEMO-W%d" % (k + 1), nm, "site", "daily", rate, role_, False) for k, (nm, rate, role_) in enumerate([
+            ("Ravi Kumar", 120, "Carpenter"), ("Suresh Nair", 120, "Carpenter"), ("Anil Thomas", 95, "Painter"), ("Mohan Das", 100, "Electrician"),
+            ("Joseph Mathew", 90, "Helper"), ("Faisal Khan", 110, "Tiler"), ("Manoj Pillai", 130, "Gypsum fixer"), ("Kabir Ali", 85, "Helper")])]
+        emps = []
+        for code, nm, kd, pt, rate_, desig, usr in staff + workers:
+            emps.append(Emp.create({"code": code, "name": nm, "kind": kd, "pay_type": pt, "rate": rate_, "designation": desig, "user_id": usr.id if usr else False,
+                                    "join_date": today - timedelta(days=400), "phone": f"+971 55 {rnd.randint(1000000, 9999999)}"}))
+        running = Lead.search([("tag_ids", "in", tag.ids), ("otm_stage", "=", "work_started")])
+        for n in range(1, 36):
+            day_ = today - timedelta(days=n)
+            if day_.weekday() == 6:
+                continue
+            for k, e in enumerate(emps):
+                st = rnd.choices(["present", "half", "absent"], [88, 6, 6])[0]
+                Att.create({"employee_id": e.id, "date": day_, "status": st, "marked_by": users[MGR].id if e.kind == "office" else pms[k % 2].id,
+                            "lead_id": running[(k + n // 7) % len(running)].id if running and e.kind == "site" and st != "absent" else False})
+        Leave = env["otm.ft.leave"]
+        by_code = {e.code: e for e in emps}
+        Leave.create({"employee_id": by_code["DEMO-S1"].id, "date_from": today + timedelta(days=5), "date_to": today + timedelta(days=7), "days": 3, "reason": "Family function"})
+        Leave.create({"employee_id": by_code["DEMO-P2"].id, "date_from": today + timedelta(days=12), "date_to": today + timedelta(days=13), "days": 2, "reason": "Medical appointment"})
+        Leave.create({"employee_id": by_code["DEMO-PR"].id, "date_from": today - timedelta(days=20), "date_to": today - timedelta(days=18), "days": 3, "reason": "Annual leave", "status": "approved", "reviewed_by": users[MGR].id})
+        Leave.create({"employee_id": by_code["DEMO-AC"].id, "date_from": today - timedelta(days=9), "date_to": today - timedelta(days=9), "days": 1, "reason": "Personal work", "status": "rejected", "reviewed_by": users[MGR].id, "reject_reason": "Month-end closing"})
+        prev = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
+        for k, e in enumerate(emps):
+            vals = self._otm_compute_slip(e, prev, allowances=100 if e.kind == "site" and k % 3 == 0 else 0.0, deductions=50 if k % 4 == 0 else 0.0)
+            env["otm.ft.payslip"].create({**vals, "employee_id": e.id, "month": prev, "status": "paid" if k % 3 == 0 else "approved" if k % 3 == 1 else "draft", "paid_on": today - timedelta(days=2) if k % 3 == 0 else False})
         for pre, lead_name in DEMO_CUSTOMERS:
             lead = Lead.search([("name", "=", lead_name), ("tag_ids", "in", tag.ids)], limit=1)
             if lead.partner_id:
@@ -405,6 +437,7 @@ class CrmLead(models.Model):
             except Exception:
                 pass  # still referenced (e.g. a paid invoice or PO was kept)
         tag.unlink()
+        env["otm.ft.employee"].with_context(active_test=False).search([("code", "=like", "DEMO-%")]).unlink()
         env["otm.ft.petty"].search([("holder_id.login", "=like", f"demo.%@{DEMO_DOMAIN}")]).unlink()
         # demo logins: portal ones are deleted; internal ones are archived (history references them) and reactivated on reload
         for u in env["res.users"].with_context(active_test=False).search([("login", "=like", f"demo.%@{DEMO_DOMAIN}")]):

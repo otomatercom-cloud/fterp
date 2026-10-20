@@ -15,7 +15,7 @@ export const NAV: NavItem[] = [
   { slug: "installation", label: "Installation", icon: "HardHat" },
   { slug: "finance", label: "Finance & Accounts", icon: "Landmark", groups: ["otm_ft_pipeline.group_ft_accounts", "otm_ft_pipeline.group_ft_manager", "account.group_account_manager"] },
   { slug: "petty-cash", label: "Petty Cash", icon: "Wallet", groups: ["otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_procurement", "otm_ft_pipeline.group_ft_accounts"] },
-  { slug: "hr", label: "HR & Payroll", icon: "UserCog", groups: ["hr.group_hr_user", "hr.group_hr_manager"] },
+  { slug: "hr", label: "HR & Payroll", icon: "UserCog", groups: ["otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_procurement", "otm_ft_pipeline.group_ft_accounts"] },
   { slug: "manufacturing", label: "Manufacturing", icon: "Factory", groups: ["otm_ft_pipeline.group_ft_manufacturing", "otm_ft_pipeline.group_ft_manager"] },
   { slug: "intercompany", label: "Intercompany Orders", icon: "ArrowLeftRight", groups: ["otm_ft_pipeline.group_ft_manufacturing", "otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager"] },
   { slug: "portal", label: "My Projects", icon: "Globe", groups: ["base.group_portal"] },

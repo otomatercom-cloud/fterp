@@ -126,3 +126,12 @@ Setup: the factory is a separate Odoo **company**. Demo load creates "FT Furnitu
 6. *Spend this month by category* donut: holders see their own, Accounts/Manager see everyone's.
 7. Approved expenses linked to a project are added to its **cost** in Finance (profitability = estimate − procurement − petty cash).
 8. Negative: Procurement/PM/Sales cannot open the Approvals or Floats tabs or other people's receipts (`/api/petty-files/<id>` returns 403/404); customers and factory users have no menu.
+
+## Scenario L — HR & Payroll (employees, attendance, leave, payroll)
+Demo data: 7 office staff (linked to the demo logins, monthly salary), 8 site workers (daily wage), 35 days of attendance, 4 leave requests, last month's payslips (paid / approved / draft).
+1. Login `demo.manager@ftdemo.com` → **HR & Payroll** → *Employees*: list with rates. Add an employee (name, type, pay type, rate, optional login user), edit, archive.
+2. *Attendance*: pick a date (not future) → set Present / Half day / Absent / Leave and the **project** for each worker → **Save attendance**. The table shows this month's P / H / A / L counts. Login `demo.pm1` → the same tab lists only site workers and only pm1's running projects.
+3. *Leave*: as `demo.sales1` **Request leave** (dates + reason; overlapping requests are refused; Sundays are not counted). As `demo.manager` approve (the dates become "Leave" in attendance) or reject with a reason. You cannot approve your own request.
+4. *Payroll* (Manager / Accounts): choose the month → **Generate / refresh drafts**. Monthly staff: salary × paid days ÷ working days (Sundays excluded; paid leave counts, half day = 0.5). Daily workers: days worked × daily wage. **Adjust** allowances / deductions on drafts. Manager **Approve** → Accounts (`demo.accounts`) **Mark paid**. Approved/paid payslips are never overwritten by Generate.
+5. Staff see only their own record, leave and approved/paid payslips (My payslips); PM sees no salary figures of others.
+6. Finance → profitability: attendance days linked to a project add **labour cost** to that project (daily wage, or monthly salary ÷ 26) next to procurement and petty cash.
