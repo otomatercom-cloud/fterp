@@ -86,7 +86,11 @@ class CrmLeadProcurement(models.Model):
     def otm_pos(self):
         roles = self._otm_user_roles()
         pos = self._otm_visible_pos()
-        return {"can_manage": PROC in roles or MGR in roles, "can_receive": True, "orders": [self._otm_po_dict(p) for p in pos]}
+        queue = []
+        for l in self.search([("otm_stage", "in", ("procurement", "pm_assigned"))], limit=100):  # record rules apply to the real user
+            lines = l.sudo().otm_procurement_line_ids
+            queue.append({"id": l.id, "name": l.name, "stage": l.otm_stage, "lines": len(lines), "pending": len(lines.filtered(lambda x: not x.purchase_id))})
+        return {"can_manage": PROC in roles or MGR in roles, "can_receive": True, "orders": [self._otm_po_dict(p) for p in pos], "queue": queue}
 
     @api.model
     def _otm_po_for(self, po_id, *roles):

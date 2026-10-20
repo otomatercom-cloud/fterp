@@ -188,7 +188,7 @@ export const getBoqOverview = (s: Session) => callKw<BoqRow[]>(s.sessionId, "crm
 // ---- procurement module: purchase order tracking, goods receipt, vendors ----
 export type PoLine = { id: number; name: string; qty: number; received: number; price: number };
 export type PoRow = { id: number; name: string; vendor: string; lead_id: number | false; lead: string; state: string; receipt: "none" | "partial" | "received"; untaxed: number; total: number; expected: string | false; overdue: boolean; lines: PoLine[]; receipts: { line: string; qty: number; date: string; user: string; note: string }[] };
-export const getPos = (s: Session) => callKw<{ can_manage: boolean; orders: PoRow[] }>(s.sessionId, "crm.lead", "otm_pos", [], {}, co(s));
+export const getPos = (s: Session) => callKw<{ can_manage: boolean; orders: PoRow[]; queue: { id: number; name: string; stage: string; lines: number; pending: number }[] }>(s.sessionId, "crm.lead", "otm_pos", [], {}, co(s));
 export const confirmPo = (s: Session, id: number, expected: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_po_confirm", [id, expected], {}, co(s));
 export const setPoExpected = (s: Session, id: number, expected: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_po_set_expected", [id, expected], {}, co(s));
 export const cancelPo = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_po_cancel", [id], {}, co(s));

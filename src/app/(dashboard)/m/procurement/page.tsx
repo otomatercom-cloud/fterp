@@ -13,7 +13,7 @@ export default async function ProcurementPage({ searchParams }: { searchParams: 
   const item = NAV.find((n) => n.slug === "procurement");
   if (!item || !canSee(item, s.groups)) notFound();
   const tab = (await searchParams).tab === "vendors" ? "vendors" : "orders";
-  let d: { can_manage: boolean; orders: PoRow[] } | null = null, vendors: Vendor[] = [];
+  let d: Awaited<ReturnType<typeof getPos>> | null = null, vendors: Vendor[] = [];
   try {
     d = await getPos(s);
     if (d.can_manage) vendors = await getVendors(s);
@@ -33,6 +33,20 @@ export default async function ProcurementPage({ searchParams }: { searchParams: 
     <div className="space-y-4">
       <div><h1 className="text-xl font-semibold">Procurement</h1><p className="text-sm text-muted">Purchase orders of FT projects: confirm, track delivery and record goods received</p></div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{kpi.map(([l, v, g]) => <div key={l} className={`glass p-4 ${g}`}><p className="text-xs text-muted">{l}</p><p className="mt-1 text-2xl font-semibold">{v}</p></div>)}</div>
+      {d.queue?.length > 0 && (
+        <section className="glass p-5">
+          <h2 className="mb-2 font-semibold">Projects waiting for Procurement</h2>
+          <p className="mb-2 text-xs text-muted">Open the project, enter vendor and price for each line, then click <b>Create purchase orders</b>. They will then appear here.</p>
+          <ul className="space-y-1 text-sm">
+            {d.queue.map((q) => (
+              <li key={q.id} className="flex items-center justify-between rounded border border-line p-2">
+                <Link href={`/m/crm/${q.id}`} className="font-medium hover:underline">{q.name}</Link>
+                <span className="text-xs text-muted">{q.stage === "pm_assigned" ? "Waiting for PM to send" : `${q.pending} of ${q.lines} lines need a PO`}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <div className="flex gap-1">{tabs.map(([k, l]) => <Link key={k} href={`/m/procurement?tab=${k}`} className={`rounded-full border px-4 py-1.5 text-sm ${tab === k ? "border-gold text-gold" : "border-line text-muted"}`}>{l}</Link>)}</div>
       <section className="glass p-5">{tab === "vendors" && d.can_manage ? <VendorPanel vendors={vendors} /> : <PoBoard orders={d.orders} canManage={d.can_manage} />}</section>
     </div>
