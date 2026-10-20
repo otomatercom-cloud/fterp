@@ -20,7 +20,7 @@ class OtmFtPetty(models.Model):
 
     holder_id = fields.Many2one("res.users", required=True, index=True)
     lead_id = fields.Many2one("crm.lead", ondelete="set null", index=True)
-    kind = fields.Selection([("topup", "Top-up"), ("expense", "Expense")], required=True)
+    kind = fields.Selection([("topup", "Top-up"), ("expense", "Expense"), ("adjust", "Cash count adjustment")], required=True)
     category = fields.Selection(CATS, default="other")
     amount = fields.Float(required=True)
     date = fields.Date(default=fields.Date.context_today)
@@ -29,6 +29,14 @@ class OtmFtPetty(models.Model):
     reviewed_by = fields.Many2one("res.users")
     reviewed_on = fields.Datetime()
     reject_reason = fields.Char()
+    move_id = fields.Many2one("account.move", string="Journal Entry", ondelete="set null", copy=False)
+    post_error = fields.Char(copy=False)
+    ref = fields.Char(compute="_compute_ref", store=True)
+
+    @api.depends("kind")
+    def _compute_ref(self):
+        for r in self:
+            r.ref = "PC-%05d" % r.id if r.id else "PC"
 
 
 class CrmLeadPetty(models.Model):
@@ -46,7 +54,7 @@ class CrmLeadPetty(models.Model):
     def _otm_petty_balance(self, uid):
         rows = self.env["otm.ft.petty"].sudo().search([("holder_id", "=", uid), ("status", "=", "approved")])
         pend = self.env["otm.ft.petty"].sudo().search([("holder_id", "=", uid), ("status", "=", "pending"), ("kind", "=", "expense")])
-        bal = sum(r.amount if r.kind == "topup" else -r.amount for r in rows)
+        bal = sum(-r.amount if r.kind == "expense" else r.amount for r in rows)  # top-up +, expense -, count adjustment signed
         return bal, sum(pend.mapped("amount"))
 
     @api.model
@@ -60,7 +68,7 @@ class CrmLeadPetty(models.Model):
         atts = self.env["ir.attachment"].sudo().search([("res_model", "=", "otm.ft.petty"), ("res_id", "=", t.id)], order="id")
         return {
             "id": t.id, "kind": t.kind, "category": t.category or "other", "amount": t.amount, "date": fields.Date.to_string(t.date) if t.date else False,
-            "description": t.description or "", "status": t.status, "holder": t.holder_id.name or "", "holder_id": t.holder_id.id,
+            "description": t.description or "", "status": t.status, "ref": t.ref or "", "entry": t.move_id.name or "", "unposted": t.status == "approved" and not t.move_id, "holder": t.holder_id.name or "", "holder_id": t.holder_id.id,
             "lead_id": t.lead_id.id or False, "lead": t.lead_id.name or "", "reviewed_by": t.reviewed_by.name or "", "reject_reason": t.reject_reason or "",
             "files": [{"id": a.id, "name": a.name} for a in atts],
         }
@@ -77,7 +85,7 @@ class CrmLeadPetty(models.Model):
         mine = Petty.search([("holder_id", "=", uid)], limit=100)
         out = {
             "me": {"id": uid, "name": self.env.user.name}, "limit": limit, "balance": bal, "pending": pend, "can_review": reviewer, "can_topup": reviewer, "is_manager": MGR in roles,
-            "mine": [self._otm_petty_dict(t) for t in mine], "approvals": [], "floats": [], "users": [], "leads": [], "month": {},
+            "mine": [self._otm_petty_dict(t) for t in mine], "approvals": [], "counts": [], "unposted": 0, "configured": True, "has_request": bool(Petty.search_count([("holder_id", "=", uid), ("kind", "=", "topup"), ("status", "=", "pending")])), "floats": [], "users": [], "leads": [], "month": {},
         }
         try:
             leads = self.search([("otm_stage", "not in", ("lost", "new", False))], limit=200)
@@ -89,7 +97,10 @@ class CrmLeadPetty(models.Model):
         for t in scope.filtered(lambda t: t.date and t.date >= month):
             out["month"][t.category or "other"] = out["month"].get(t.category or "other", 0.0) + t.amount
         if reviewer:
-            out["approvals"] = [dict(self._otm_petty_dict(t), needs_manager=t.amount > limit, own=t.holder_id.id == uid) for t in Petty.search([("kind", "=", "expense"), ("status", "=", "pending")], order="id")]
+            out["approvals"] = [dict(self._otm_petty_dict(t), needs_manager=t.kind == "expense" and t.amount > limit, own=t.holder_id.id == uid) for t in Petty.search([("kind", "in", ("expense", "topup")), ("status", "=", "pending")], order="id")]
+            out["counts"] = [{"id": c.id, "holder": c.holder_id.name, "date": fields.Date.to_string(c.date), "expected": c.expected, "counted": c.counted, "difference": c.difference, "note": c.note or "", "by": c.counted_by.name or ""} for c in self.env["otm.ft.petty.count"].sudo().search([], limit=20)]
+            out["unposted"] = Petty.search_count([("status", "=", "approved"), ("move_id", "=", False)])
+            out["configured"] = bool(self.env["ir.config_parameter"].sudo().get_param("otm_ft_pipeline.petty_journal"))
             groups = [self.env.ref(x).id for r, x in ROLE_GROUPS.items() if r in PETTY_ROLES]
             for u in self.env["res.users"].sudo().search([("group_ids", "in", groups), ("share", "=", False), ("active", "=", True)], order="name"):
                 b, p = self._otm_petty_balance(u.id)
@@ -173,7 +184,7 @@ class CrmLeadPetty(models.Model):
         self.env["otm.ft.petty"].sudo().create({
             "holder_id": user.id, "kind": "topup", "amount": amount, "description": str(note or "Top-up").strip()[:200] or "Top-up", "status": "approved",
             "reviewed_by": self.env.user.id, "reviewed_on": fields.Datetime.now(),
-        })
+        })._otm_petty_post_entry()
         return True
 
     @api.model
@@ -182,18 +193,22 @@ class CrmLeadPetty(models.Model):
         if ACC not in roles and MGR not in roles:
             raise UserError(self.env._("Only Accounts or a Manager can review expenses."))
         t = self.env["otm.ft.petty"].sudo().browse(int(txn_id))
-        if not t.exists() or t.kind != "expense" or t.status != "pending":
-            raise UserError(self.env._("This expense is no longer pending."))
+        if not t.exists() or t.kind not in ("expense", "topup") or t.status != "pending":
+            raise UserError(self.env._("This request is no longer pending."))
         if t.holder_id == self.env.user and not self.env.user.has_group("base.group_system"):
             raise UserError(self.env._("You cannot review your own expense."))
         note = str(note or "").strip()[:200]
         if decision == "approve":
-            if t.amount > self._otm_petty_limit() and MGR not in roles:
-                raise UserError(self.env._("Expenses above %s need Manager approval.", self._otm_petty_limit()))
-            bal, _p = self._otm_petty_balance(t.holder_id.id)
-            if t.amount > bal + 1e-6:
-                raise UserError(self.env._("The holder's balance (%s) is lower than this expense. Top up first.", round(bal, 2)))
+            if t.kind == "expense":
+                if t.amount > self._otm_petty_limit() and MGR not in roles:
+                    raise UserError(self.env._("Expenses above %s need Manager approval.", self._otm_petty_limit()))
+                bal, _p = self._otm_petty_balance(t.holder_id.id)
+                if t.amount > bal + 1e-6:
+                    raise UserError(self.env._("The holder's balance (%s) is lower than this expense. Top up first.", round(bal, 2)))
             t.write({"status": "approved", "reviewed_by": self.env.user.id, "reviewed_on": fields.Datetime.now()})
+            t._otm_petty_post_entry()
+            if t.kind == "expense":
+                self._otm_petty_low_alert(t.holder_id)
         elif decision == "reject":
             if not note:
                 raise UserError(self.env._("Write the reason for rejecting."))

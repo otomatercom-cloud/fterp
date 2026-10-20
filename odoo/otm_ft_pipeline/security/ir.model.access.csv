@@ -26,3 +26,4 @@ access_otm_ft_leave_user,otm.ft.leave user,model_otm_ft_leave,base.group_user,1,
 access_otm_ft_payslip_user,otm.ft.payslip user,model_otm_ft_payslip,base.group_user,1,0,0,0
 access_otm_ft_notification_user,otm.ft.notification user,model_otm_ft_notification,base.group_user,1,0,0,0
 access_otm_ft_msg_log_user,otm.ft.msg.log user,model_otm_ft_msg_log,base.group_user,1,0,0,0
+access_otm_ft_petty_count_user,otm.ft.petty.count user,model_otm_ft_petty_count,base.group_user,1,0,0,0

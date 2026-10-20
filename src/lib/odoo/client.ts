@@ -11,14 +11,14 @@ const TIMEOUT_MS = 15_000;
 
 type RpcResponse<T> = { result?: T; error?: { message?: string; data?: { name?: string; message?: string } } };
 
-async function rpc<T>(path: string, params: unknown, sessionId?: string): Promise<{ data: T; res: Response }> {
+async function rpc<T>(path: string, params: unknown, sessionId?: string, timeoutMs = TIMEOUT_MS): Promise<{ data: T; res: Response }> {
   let res: Response;
   try {
     res = await fetch(`${env().ODOO_BASE_URL}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(sessionId ? { Cookie: `session_id=${sessionId}` } : {}) },
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
       cache: "no-store",
     });
   } catch (e) {
@@ -51,7 +51,7 @@ export async function odooLogin(login: string, password: string): Promise<OdooLo
   return { sessionId, uid: data.uid, name: data.name ?? login };
 }
 
-export type CallOpts = { companyIds?: number[]; lang?: string };
+export type CallOpts = { companyIds?: number[]; lang?: string; timeoutMs?: number };
 
 /** Calls an ORM method as the logged-in user, so Odoo ACLs and record rules always apply. */
 export async function callKw<T>(
@@ -67,6 +67,7 @@ export async function callKw<T>(
     `/web/dataset/call_kw/${model}/${method}`,
     { model, method, args, kwargs: { ...kwargs, context } },
     sessionId,
+    opts.timeoutMs,
   );
   return data;
 }

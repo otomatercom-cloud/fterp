@@ -74,8 +74,8 @@ export async function companyCurrency(s: Session) {
 }
 
 export const demoStatus = (s: Session) => callKw<{ count: number }>(s.sessionId, "crm.lead", "otm_demo_status", [], {}, co(s));
-export const loadDemo = (s: Session) => callKw<{ created: number; invoices_skipped: number; password: string }>(s.sessionId, "crm.lead", "otm_load_demo_data", [], {}, co(s));
-export const removeDemo = (s: Session) => callKw<{ removed: number; invoices_kept: number }>(s.sessionId, "crm.lead", "otm_remove_demo_data", [], {}, co(s));
+export const loadDemo = (s: Session) => callKw<{ created: number; invoices_skipped: number; password: string }>(s.sessionId, "crm.lead", "otm_load_demo_data", [], {}, { ...co(s), timeoutMs: 170_000 });
+export const removeDemo = (s: Session) => callKw<{ removed: number; invoices_kept: number }>(s.sessionId, "crm.lead", "otm_remove_demo_data", [], {}, { ...co(s), timeoutMs: 170_000 });
 
 export type Project = { id: number; otm_stage: string; name: string; partner_name: string | false; otm_progress: number; otm_estimate_amount: number; otm_project_manager_id: [number, string] | false; create_date: string };
 export const listProjects = (s: Session) =>
@@ -210,8 +210,11 @@ export const icAction = (s: Session, orderId: number, action: string, note: stri
 export const moveIcLine = (s: Session, lineId: number, stage: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_ic_move_line", [lineId, stage], {}, co(s));
 
 // ---- petty cash ----
-export type PettyEntry = { id: number; kind: "topup" | "expense"; category: string; amount: number; date: string | false; description: string; status: "pending" | "approved" | "rejected"; holder: string; holder_id: number; lead_id: number | false; lead: string; reviewed_by: string; reject_reason: string; files: { id: number; name: string }[]; needs_manager?: boolean; own?: boolean };
-export type PettyData = { me: { id: number; name: string }; limit: number; balance: number; pending: number; can_review: boolean; can_topup: boolean; is_manager: boolean; mine: PettyEntry[]; approvals: PettyEntry[]; floats: { id: number; name: string; balance: number; pending: number }[]; leads: { id: number; name: string }[]; month: Record<string, number> };
+export type PettyEntry = { ref?: string; entry?: string; unposted?: boolean; id: number; kind: "topup" | "expense" | "adjust"; category: string; amount: number; date: string | false; description: string; status: "pending" | "approved" | "rejected"; holder: string; holder_id: number; lead_id: number | false; lead: string; reviewed_by: string; reject_reason: string; files: { id: number; name: string }[]; needs_manager?: boolean; own?: boolean };
+export type PettyData = { me: { id: number; name: string }; limit: number; balance: number; pending: number; can_review: boolean; can_topup: boolean; is_manager: boolean; mine: PettyEntry[]; approvals: PettyEntry[]; floats: { id: number; name: string; balance: number; pending: number }[]; leads: { id: number; name: string }[]; month: Record<string, number>; counts: PettyCount[]; unposted: number; configured: boolean; has_request: boolean };
+export type PettyCount = { id: number; holder: string; date: string; expected: number; counted: number; difference: number; note: string; by: string };
+export type PettySetup = { can_edit: boolean; configured: boolean; journal: number; source: number; diff_account: number; map: Record<string, number>; limit: number; low: number; journals: { id: number; name: string }[]; sources: { id: number; name: string }[]; accounts: { id: number; name: string }[]; cats: { key: string; label: string }[] };
+export type PettyStatement = { holder: string; opening: number; topups: number; expenses: number; adjust: number; closing: number; lines: (string | number)[][] }[];
 export const getPetty = (s: Session) => callKw<PettyData>(s.sessionId, "crm.lead", "otm_petty_overview", [], {}, co(s));
 export const addPetty = (s: Session, lead: number | false, category: string, amount: number, date: string, description: string) => callKw<number>(s.sessionId, "crm.lead", "otm_petty_add", [lead, category, amount, date, description], {}, co(s));
 export const addPettyFile = (s: Session, id: number, filename: string, b64: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_petty_file_add", [id, filename, b64], {}, co(s));
@@ -254,3 +257,10 @@ export type QueueItem = { id: number; name: string; customer: string; stage: str
 export const getQueue = (s: Session, kind: "finance" | "design" | "site") => callKw<QueueItem[]>(s.sessionId, "crm.lead", "otm_work_queue", [kind], {}, co(s)).catch(() => [] as QueueItem[]);
 export type InstallRow = Install & { lead_id: number; project: string };
 export const getInstallAll = (s: Session) => callKw<InstallRow[]>(s.sessionId, "crm.lead", "otm_install_all", [], {}, co(s));
+export const requestPettyTopup = (s: Session, amount: number, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_petty_topup_request", [amount, note], {}, co(s));
+export const countPetty = (s: Session, userId: number, counted: number, note: string) => callKw<number>(s.sessionId, "crm.lead", "otm_petty_count", [userId, counted, note], {}, co(s));
+export const getPettySetup = (s: Session) => callKw<PettySetup>(s.sessionId, "crm.lead", "otm_petty_setup", [], {}, co(s));
+export const savePettySetup = (s: Session, journal: number, source: number, diff: number, mapping: Record<string, number>, limit: number, low: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_petty_setup_save", [journal, source, diff, mapping, limit, low], {}, co(s));
+export const postPettyPending = (s: Session) => callKw<{ posted: number; failed: number }>(s.sessionId, "crm.lead", "otm_petty_post_pending", [], {}, co(s));
+export const getPettyStatement = (s: Session, month: string) => callKw<PettyStatement>(s.sessionId, "crm.lead", "otm_petty_statement", [month], {}, co(s));
+export const getPettyStatementCsv = (s: Session, month: string) => callKw<string>(s.sessionId, "crm.lead", "otm_petty_statement_csv", [month], {}, co(s));

@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth/session";
 import { OdooError } from "@/lib/odoo/client";
-import { addPetty, cancelPetty, reviewPetty, topupPetty } from "@/lib/odoo/leads";
+import { addPetty, cancelPetty, countPetty, postPettyPending, requestPettyTopup, reviewPetty, savePettySetup, topupPetty } from "@/lib/odoo/leads";
 
 type R = { error?: string; id?: number };
 const fail = (e: unknown): R => {
@@ -38,4 +38,30 @@ export async function reviewAction(txn: number, decision: string, note: string):
   const s = await requireSession();
   try { await reviewPetty(s, p.data.t, p.data.d, p.data.n); } catch (e) { return fail(e); }
   return done();
+}
+
+export async function requestTopupAction(amount: number, note: string): Promise<R> {
+  const p = z.object({ a: z.number().positive().max(1e7), n: z.string().trim().max(200) }).safeParse({ a: amount, n: note });
+  if (!p.success) return { error: "Enter an amount above 0." };
+  const s = await requireSession();
+  try { await requestPettyTopup(s, p.data.a, p.data.n); } catch (e) { return fail(e); }
+  return done();
+}
+export async function countAction(userId: number, counted: number, note: string): Promise<R> {
+  const p = z.object({ u: id, c: z.number().min(0).max(1e8), n: z.string().trim().max(200) }).safeParse({ u: userId, c: counted, n: note });
+  if (!p.success) return { error: "Choose a holder and enter the counted cash." };
+  const s = await requireSession();
+  try { await countPetty(s, p.data.u, p.data.c, p.data.n); } catch (e) { return fail(e); }
+  return done();
+}
+export async function saveSetupAction(journal: number, source: number, diff: number, mapping: Record<string, number>, limit: number, low: number): Promise<R> {
+  const p = z.object({ j: z.number().int().min(0), s: z.number().int().min(0), d: z.number().int().min(0), m: z.record(z.string(), z.number().int().min(0)), l: z.number().positive().max(1e8), w: z.number().min(0).max(1e8) }).safeParse({ j: journal, s: source, d: diff, m: mapping, l: limit, w: low });
+  if (!p.success) return { error: "Check the values." };
+  const s = await requireSession();
+  try { await savePettySetup(s, p.data.j, p.data.s, p.data.d, p.data.m, p.data.l, p.data.w); } catch (e) { return fail(e); }
+  return done();
+}
+export async function postPendingAction(): Promise<R & { msg?: string }> {
+  const s = await requireSession();
+  try { const r = await postPettyPending(s); return done({ msg: `${r.posted} posted${r.failed ? `, ${r.failed} could not be posted (check the setup)` : ""}.` } as never); } catch (e) { return fail(e); }
 }

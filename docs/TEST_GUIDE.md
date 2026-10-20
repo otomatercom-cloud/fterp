@@ -146,3 +146,12 @@ Demo data: 7 office staff (linked to the demo logins, monthly salary), 8 site wo
 
 ## Themes
 Top bar → palette dropdown (next to your name): **Maroon (dark)**, **Day (light)**, **Ocean (dark)**, **Emerald (dark)**. The choice is remembered in this browser. The logo panel keeps the brand maroon in every theme.
+
+## Scenario K2 — Petty Cash accounting (professional controls)
+1. Login as Manager/Admin → Petty Cash → **Accounting setup**: pick the *Petty cash journal* (a Cash-type journal with a default account), the *funding source* (bank/cash journal), a *cash short/excess* account, an expense account per category, the approval limit and low-balance level → **Save setup**. (Create the Cash journal in Odoo Accounting first if none is listed.)
+2. **Post pending entries** posts older approved rows. From now on every top-up, approved expense and count difference creates a posted journal entry (shown as the entry number on the row; "unposted" if setup is missing).
+3. A holder uses **Request top-up**; Accounts/Manager see it under *Approvals* and approve (entry: Dr petty cash / Cr funding source). Direct top-up in *Cash floats* works as before.
+4. *Cash floats & count*: Accounts counts a holder's physical cash. Difference ≠ 0 needs a reason and creates an adjustment entry (short: Dr difference account; excess: Cr difference account) so the books equal the cash. Nobody counts their own cash.
+5. After an expense is approved, balance below the low-balance level notifies the holder and Accounts.
+6. **Statement** tab: pick a month → opening, top-ups, expenses, count adjustments, closing per holder; **Download CSV** gives every line with its journal entry number.
+7. Verify in Odoo: Accounting → Journal Entries → petty journal: debits = credits, expense accounts match the categories.
