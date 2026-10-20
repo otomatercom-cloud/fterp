@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -470,7 +472,8 @@ class CrmLead(models.Model):
         for vendor, vlines in by_vendor.items():
             partner = env["res.partner"].search([("name", "=ilike", vendor)], limit=1) or env["res.partner"].create({"name": vendor, "company_type": "company"})
             order = env["purchase.order"].create({
-                "partner_id": partner.id, "origin": self.name, "company_id": company.id,
+                "partner_id": partner.id, "origin": self.name, "company_id": company.id, "otm_lead_id": self.id,
+                "otm_expected_date": fields.Date.context_today(self) + timedelta(days=14),
                 "order_line": [(0, 0, {
                     "name": l.name, "product_qty": l.qty, "price_unit": l.price,
                     **({uom_field: uom.id} if uom else {}),

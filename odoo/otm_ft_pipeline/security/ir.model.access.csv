@@ -16,3 +16,4 @@ access_otm_ft_design_user,otm.ft.design user,model_otm_ft_design,base.group_user
 access_otm_ft_milestone_user,otm.ft.milestone user,model_otm_ft_milestone,base.group_user,1,0,0,0
 access_otm_ft_rate_user,otm.ft.rate user,model_otm_ft_rate,base.group_user,1,0,0,0
 access_otm_ft_estimate_rev_user,otm.ft.estimate.rev user,model_otm_ft_estimate_rev,base.group_user,1,0,0,0
+access_otm_ft_receipt_user,otm.ft.receipt user,model_otm_ft_receipt,base.group_user,1,0,0,0

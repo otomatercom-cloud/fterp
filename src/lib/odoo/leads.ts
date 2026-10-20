@@ -184,3 +184,15 @@ export const getEstRevisions = (s: Session, id: number) => callKw<EstRev[]>(s.se
 export const restoreRevision = (s: Session, id: number, revId: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_restore_revision", [[id], revId], {}, co(s));
 export type BoqRow = { id: number; name: string; customer: string; stage: string; untaxed: number; lines: number; revisions: number; categories: Record<string, number> };
 export const getBoqOverview = (s: Session) => callKw<BoqRow[]>(s.sessionId, "crm.lead", "otm_boq_overview", [], {}, co(s));
+
+// ---- procurement module: purchase order tracking, goods receipt, vendors ----
+export type PoLine = { id: number; name: string; qty: number; received: number; price: number };
+export type PoRow = { id: number; name: string; vendor: string; lead_id: number | false; lead: string; state: string; receipt: "none" | "partial" | "received"; untaxed: number; total: number; expected: string | false; overdue: boolean; lines: PoLine[]; receipts: { line: string; qty: number; date: string; user: string; note: string }[] };
+export const getPos = (s: Session) => callKw<{ can_manage: boolean; orders: PoRow[] }>(s.sessionId, "crm.lead", "otm_pos", [], {}, co(s));
+export const confirmPo = (s: Session, id: number, expected: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_po_confirm", [id, expected], {}, co(s));
+export const setPoExpected = (s: Session, id: number, expected: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_po_set_expected", [id, expected], {}, co(s));
+export const cancelPo = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_po_cancel", [id], {}, co(s));
+export const receivePo = (s: Session, id: number, lines: { line_id: number; qty: number }[], note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_po_receive", [id, lines, note], {}, co(s));
+export type Vendor = { id: number; name: string; phone: string; email: string; orders: number; total: number; open: number };
+export const getVendors = (s: Session) => callKw<Vendor[]>(s.sessionId, "crm.lead", "otm_vendors", [], {}, co(s));
+export const addVendor = (s: Session, name: string, phone: string, email: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_vendor", [name, phone, email], {}, co(s));

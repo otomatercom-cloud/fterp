@@ -12,3 +12,4 @@ from . import design
 from . import milestone
 from . import finance
 from . import boq
+from . import procurement

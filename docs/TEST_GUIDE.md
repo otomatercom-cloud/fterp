@@ -98,3 +98,12 @@ Quick checks: sales1 vs sales2 see different leads; pm1 vs pm2 see different pro
 3. **Submit to Procurement** → *Estimate revisions* card shows Rev 1. Login `demo.procurement` → **Return to Sales** (or Confirm costing) → a new revision is kept only when the content changed.
 4. As sales1 edit and re-submit: Rev N shows the difference vs the previous revision (+/- amount). Expand a revision to see its lines; **Restore into draft** (Sales Manager, only at Estimate draft) puts those lines back in the editor.
 5. **Estimation & BOQ** page → *Estimates in progress*: lines, revisions, total and category split per lead.
+
+## Scenario I — Procurement module (vendors, PO tracking, goods receipt)
+1. Login `demo.procurement@ftdemo.com` → **Procurement**. KPIs: To confirm, Awaiting goods, Overdue deliveries, Open order value. Filters: All / To confirm / Awaiting goods / Overdue / Received.
+2. Open a **Draft** PO (click its row) → set *Expected delivery* → **Confirm order** → status Confirmed, "Not received". (Cancel works only for unconfirmed orders without receipts.)
+3. Open a confirmed PO → type quantities in *Receive now* (cannot exceed what is still due) → note → **Record goods received**. Partial shows "Partially received"; when every line is complete it becomes "Received" and the input boxes disappear. Receipts are listed under the PO.
+4. Overdue: an order whose expected date passed and is not fully received shows red "Overdue". **Reschedule** moves the date.
+5. **Vendors** tab: add a vendor (name, phone, email); table shows orders, open orders and value per vendor.
+6. Login `demo.pm1@ftdemo.com` → Procurement shows only own projects' POs; can record goods received, cannot confirm/cancel/reschedule and has no Vendors tab. `demo.pm2` sees other projects. `demo.sales1`/accounts do not see the menu.
+7. Each receipt is also logged in the lead chatter ("Goods received on P000xx").

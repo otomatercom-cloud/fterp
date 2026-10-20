@@ -241,6 +241,23 @@ class CrmLead(models.Model):
                 try:
                     with env.cr.savepoint():
                         lead._otm_make_pos()
+                    today = fields.Date.context_today(lead)
+                    for k, po in enumerate(env["purchase.order"].search([("otm_lead_id", "=", lead.id)], order="id")):
+                        mode = 1 + (i + k) % 3 if rank >= ORDER.index("work_started") else (i + k) % 4
+                        if mode == 0:
+                            continue  # leave as draft: Procurement confirms it in the test
+                        try:
+                            with env.cr.savepoint():
+                                po.otm_expected_date = today + timedelta(days={1: 10, 2: -6, 3: -20}[mode])
+                                po.button_confirm()
+                                lines = po.order_line.filtered(lambda l: not l.display_type)
+                                if mode == 3:
+                                    for l in lines:
+                                        env["otm.ft.receipt"].create({"line_id": l.id, "qty": l.product_qty, "note": "Delivered in full", "user_id": users[PROC].id})
+                                elif mode == 2 and lines:
+                                    env["otm.ft.receipt"].create({"line_id": lines[0].id, "qty": lines[0].product_qty / 2, "note": "Part delivery", "user_id": users[PROC].id})
+                        except Exception:
+                            skipped += 1
                 except Exception:  # purchase not fully configured: keep the lead, skip POs
                     skipped += 1
 
