@@ -8,3 +8,4 @@ access_crm_lead_ft_accounts,crm.lead ft accounts,crm.model_crm_lead,group_ft_acc
 access_otm_ft_proc_line_user,otm.ft.procurement.line user,model_otm_ft_procurement_line,base.group_user,1,0,0,0
 access_otm_ft_proc_line_proc,otm.ft.procurement.line procurement,model_otm_ft_procurement_line,group_ft_procurement,1,1,1,1
 access_otm_ft_site_update_user,otm.ft.site.update user,model_otm_ft_site_update,base.group_user,1,0,0,0
+access_otm_ft_task_user,otm.ft.task user,model_otm_ft_task,base.group_user,1,0,0,0

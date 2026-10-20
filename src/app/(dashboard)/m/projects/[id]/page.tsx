@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { NAV, canSee } from "@/lib/permissions/nav";
 import { OdooError } from "@/lib/odoo/client";
-import { getProject, getSiteUpdates, type SiteUpdate } from "@/lib/odoo/leads";
+import { getProject, getSiteUpdates, getTasks, type SiteUpdate, type Task } from "@/lib/odoo/leads";
+import { TaskBoard } from "@/components/task-board";
 import { SiteUpdateForm } from "@/components/site-update-form";
 import { StageActions } from "@/components/stage-actions";
 import { STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
@@ -16,11 +17,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const s = await requireSession();
   const item = NAV.find((n) => n.slug === "projects");
   if (!item || !canSee(item, s.groups)) notFound();
-  let p, updates: SiteUpdate[] = [];
+  let p, updates: SiteUpdate[] = [], tasks: Task[] = [];
   try {
     p = await getProject(s, id);
     if (!p || !["work_started", "handover", "completed"].includes(p.otm_stage)) notFound();
-    updates = await getSiteUpdates(s, id);
+    [updates, tasks] = await Promise.all([getSiteUpdates(s, id), getTasks(s, id)]);
   } catch (e) {
     if (e instanceof OdooError) return <p role="alert" className="text-sm text-danger">{e.code === "access" ? "You do not have access to this project." : e.message}</p>;
     throw e;
@@ -35,6 +36,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         <div className="mt-2 h-3 rounded-full bg-white/10"><div className="h-3 rounded-full bg-gradient-to-r from-primary to-gold" style={{ width: `${p.otm_progress}%` }} /></div>
       </div>
       {p.otm_stage !== "completed" && <section className="glass p-5"><h2 className="mb-3 text-sm font-semibold">Next step</h2><StageActions id={p.id} stage={p.otm_stage} />{p.otm_stage === "work_started" && <p className="mt-2 text-xs text-muted">Handover is possible once site progress reaches 100%.</p>}</section>}
+      <section className="glass p-5"><h2 className="mb-3 text-sm font-semibold">Tasks &amp; snag list</h2><TaskBoard leadId={p.id} tasks={tasks} canEdit={canUpdate && p.otm_stage !== "completed"} /></section>
       <div className="grid gap-4 lg:grid-cols-2">
         {canUpdate && p.otm_stage === "work_started" && p.otm_progress < 100 && <section className="glass p-5"><h2 className="mb-3 text-sm font-semibold">New site update</h2><SiteUpdateForm leadId={p.id} current={p.otm_progress} /></section>}
         <section className="glass p-5">

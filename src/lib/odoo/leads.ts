@@ -112,3 +112,8 @@ export const reportRows = (s: Session) =>
 export type UserRoles = { id: number; name: string; login: string; roles: string[] };
 export const usersRoles = (s: Session) => callKw<UserRoles[]>(s.sessionId, "crm.lead", "otm_users_roles", [], {}, co(s));
 export const setUserRole = (s: Session, uid: number, role: string, enabled: boolean) => callKw<boolean>(s.sessionId, "crm.lead", "otm_set_user_role", [uid, role, enabled], {}, co(s));
+
+export type Task = { id: number; name: string; kind: "task" | "snag"; status: "todo" | "doing" | "done"; due: string | false };
+export const getTasks = (s: Session, id: number) => callKw<Task[]>(s.sessionId, "crm.lead", "otm_tasks", [[id]], {}, co(s));
+export const addTask = (s: Session, id: number, name: string, kind: string, due: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_task", [[id], name, kind, due], {}, co(s));
+export const setTaskStatus = (s: Session, id: number, taskId: number, status: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_set_task_status", [[id], taskId, status], {}, co(s));

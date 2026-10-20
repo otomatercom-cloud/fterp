@@ -156,6 +156,10 @@ class CrmLead(models.Model):
                 Log.create({"lead_id": lead.id, "action": action, "from_stage": prev, "to_stage": to, "user_id": users[role].id, "date": when})
                 prev = to
             if rank >= ORDER.index("work_started"):
+                done = rank > ORDER.index("work_started")
+                for nm, kd, stt in [("Site measurements and marking", "task", "done"), ("Electrical first fix", "task", "done"), ("Install joinery units", "task", "done" if done else "doing"),
+                                    ("Paint touch-up in lobby", "snag", "done" if done else "todo"), ("Replace damaged skirting", "snag", "done" if done else "doing")]:
+                    env["otm.ft.task"].create({"lead_id": lead.id, "name": nm, "kind": kd, "status": stt, "due_date": (now + timedelta(days=7)).date(), "user_id": users[PM].id})
                 notes = ["Site mobilised, measurements verified", "Ceiling framing and electrical first fix done", "Joinery installation in progress", "Flooring and wall finishes completed", "Snagging and final touch-ups"]
                 final = 100 if (age > 200 or rank > ORDER.index("work_started")) else rnd.choice([35, 55, 70])
                 marks = [p for p in (15, 35, 55, 80, 100) if p <= final] or [final]

@@ -3,3 +3,4 @@ from . import procurement_line
 from . import site_update
 from . import crm_lead
 from . import demo_data
+from . import project_task

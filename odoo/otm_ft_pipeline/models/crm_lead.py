@@ -74,6 +74,7 @@ class CrmLead(models.Model):
     otm_advance_amount = fields.Monetary(string="Advance Received", currency_field="company_currency", tracking=True, copy=False)
     otm_invoice_id = fields.Many2one("account.move", string="Advance Invoice", copy=False, readonly=True)
     otm_log_ids = fields.One2many("otm.ft.stage.log", "lead_id", string="Stage History")
+    otm_task_ids = fields.One2many("otm.ft.task", "lead_id", string="Tasks & Snags", copy=False)
     otm_site_update_ids = fields.One2many("otm.ft.site.update", "lead_id", string="Site Updates", copy=False)
     otm_progress = fields.Integer(string="Site Progress %", compute="_compute_otm_progress", store=True, copy=False)
 
@@ -160,6 +161,9 @@ class CrmLead(models.Model):
             if abs(inv.amount_total - self.otm_advance_amount) > 0.01:
                 raise UserError(self.env._("Advance recorded (%(a)s) differs from the invoice (%(b)s).", a=self.otm_advance_amount, b=inv.amount_total))
         if action == "complete_work":
+            open_snags = self.sudo().otm_task_ids.filtered(lambda t: t.kind == "snag" and t.status != "done")
+            if open_snags:
+                raise UserError(self.env._("Close all snags before handover (%s open).", len(open_snags)))
             if self.otm_progress < 100:
                 raise UserError(self.env._("Site progress must reach 100%% before handover (now %s%%).", self.otm_progress))
             if not (self.env.user.has_group("base.group_system") or self.otm_project_manager_id == self.env.user):
@@ -456,4 +460,41 @@ class CrmLead(models.Model):
         if not user.exists() or user.share:
             raise UserError(self.env._("Select an internal user."))
         user.write({"group_ids": [(4 if enabled else 3, self.env.ref(xmlid).id)]})
+        return True
+
+    # ---- project tasks & snag list ----
+    def _otm_can_manage_project(self):
+        self.ensure_one()
+        roles = self._otm_user_roles()
+        return self.env.user.has_group("base.group_system") or MGR in roles or (PM in roles and self.otm_project_manager_id == self.env.user)
+
+    def otm_tasks(self):
+        self.ensure_one()
+        return [
+            {"id": t.id, "name": t.name, "kind": t.kind, "status": t.status, "due": fields.Date.to_string(t.due_date) if t.due_date else False}
+            for t in self.sudo().otm_task_ids.sorted("id")
+        ]
+
+    def otm_add_task(self, name, kind, due=False):
+        self.ensure_one()
+        if not self._otm_can_manage_project():
+            raise UserError(self.env._("Only the assigned Project Manager can manage tasks."))
+        if self.otm_stage not in ("work_started", "handover"):
+            raise UserError(self.env._("Tasks can be added while the project is in progress."))
+        name = str(name or "").strip()[:200]
+        if not name or kind not in ("task", "snag"):
+            raise UserError(self.env._("Enter a task name."))
+        self.env["otm.ft.task"].sudo().create({"lead_id": self.id, "name": name, "kind": kind, "due_date": due or False, "user_id": self.env.user.id})
+        return True
+
+    def otm_set_task_status(self, task_id, status):
+        self.ensure_one()
+        if not self._otm_can_manage_project():
+            raise UserError(self.env._("Only the assigned Project Manager can manage tasks."))
+        task = self.env["otm.ft.task"].sudo().browse(int(task_id))
+        if not task.exists() or task.lead_id != self:
+            raise UserError(self.env._("Task not found."))
+        if status not in ("todo", "doing", "done"):
+            raise UserError(self.env._("Invalid status."))
+        task.write({"status": status})
         return True

@@ -19,3 +19,4 @@
 - **My Tasks / bell:** leads waiting for the user. Sales Manager and Project Manager see only their own leads; Manager, Procurement and Accounts see every lead at their stages.
 - **Reports:** by source, sales manager, stage, month, procurement vs estimate, plus CSV export (Manager, Sales Manager, Accounts, admin).
 - **Settings (admin):** assign pipeline roles to users; load/remove demo data.
+- **Tasks & snags:** the assigned Project Manager (or Manager/admin) keeps a task board per project (To do / In progress / Done). Handover is blocked while any snag is open.
