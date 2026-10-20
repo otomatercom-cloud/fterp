@@ -123,3 +123,14 @@ export const getJoinery = (s: Session, id: number) => callKw<Joinery[]>(s.sessio
 export const getJoineryAll = (s: Session) => callKw<Joinery[]>(s.sessionId, "crm.lead", "otm_joinery_all", [], {}, co(s));
 export const addJoinery = (s: Session, id: number, name: string, qty: number, due: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_joinery", [[id], name, qty, due], {}, co(s));
 export const moveJoinery = (s: Session, jobId: number, stage: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_move_joinery", [jobId, stage], {}, co(s));
+
+// ---- customer portal ----
+export type PortalLead = { id: number; name: string; stage: string; progress: number };
+export type PortalDetail = { id: number; name: string; stage: string; progress: number; estimate: Estimate; invoice: InvoiceInfo; updates: SiteUpdate[]; can_approve: boolean; can_signoff: boolean };
+export const portalProfile = (sessionId: string) =>
+  callKw<{ portal: boolean; company_id: number; company_name: string }>(sessionId, "crm.lead", "otm_portal_profile", [], {});
+export const portalLeads = (s: Session) => callKw<PortalLead[]>(s.sessionId, "crm.lead", "otm_portal_leads", [], {}, co(s));
+export const portalDetail = (s: Session, id: number) => callKw<PortalDetail>(s.sessionId, "crm.lead", "otm_portal_detail", [id], {}, co(s));
+export const portalAction = (s: Session, id: number, action: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_portal_action", [id, action], {}, co(s));
+export const portalUserInfo = (s: Session, id: number) => callKw<{ login: string | false; has_partner: boolean }>(s.sessionId, "crm.lead", "otm_portal_user_info", [[id]], {}, co(s));
+export const createPortalUser = (s: Session, id: number, login: string, password: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_create_portal_user", [[id], login, password], {}, co(s));

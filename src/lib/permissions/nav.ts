@@ -18,7 +18,7 @@ export const NAV: NavItem[] = [
   { slug: "hr", label: "HR & Payroll", icon: "UserCog", groups: ["hr.group_hr_user", "hr.group_hr_manager"] },
   { slug: "manufacturing", label: "Manufacturing", icon: "Factory", groups: ["mrp.group_mrp_user", "mrp.group_mrp_manager"] },
   { slug: "intercompany", label: "Intercompany Orders", icon: "ArrowLeftRight", groups: ["purchase.group_purchase_manager", "sales_team.group_sale_manager"] },
-  { slug: "portal", label: "Customer Portal", icon: "Globe" },
+  { slug: "portal", label: "My Projects", icon: "Globe", groups: ["base.group_portal"] },
   { slug: "process-flow", label: "Process Flow", icon: "Workflow" },
   { slug: "reports", label: "Reports", icon: "BarChart3", groups: ["otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_accounts"] },
   { slug: "admin", label: "Settings", icon: "Settings" },

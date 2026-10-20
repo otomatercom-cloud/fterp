@@ -5,3 +5,4 @@ from . import crm_lead
 from . import demo_data
 from . import project_task
 from . import joinery
+from . import portal

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { pipelineStats, recentActivity, companyCurrency, type StatRow, type Activity } from "@/lib/odoo/leads";
 import { ACTION_LABELS, STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
@@ -22,6 +23,7 @@ function ago(iso: string) {
 
 export default async function Home() {
   const s = await requireSession();
+  if (s.groups.includes("base.group_portal") && !s.groups.includes("base.group_system")) redirect("/m/portal");
   const company = s.companies.find((c) => c.id === s.companyId)?.name;
   const [rowsR, actR, curR] = await Promise.allSettled([pipelineStats(s), recentActivity(s), companyCurrency(s)]);
   const rows: StatRow[] | null = rowsR.status === "fulfilled" ? rowsR.value : null;

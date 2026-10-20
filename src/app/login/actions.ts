@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { odooLogin, OdooError } from "@/lib/odoo/client";
+import { portalProfile } from "@/lib/odoo/leads";
 import { loadProfile } from "@/lib/auth/odoo-profile";
 import { createSession, destroySession, switchCompany } from "@/lib/auth/session";
 
@@ -14,7 +15,11 @@ export async function loginAction(_: LoginState, fd: FormData): Promise<LoginSta
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   try {
     const o = await odooLogin(parsed.data.login, parsed.data.password);
-    const p = await loadProfile(o.sessionId, o.uid);
+    // Customer portal users have no access to staff profile data; the addon tells us who they are.
+    const portal = await portalProfile(o.sessionId).catch(() => null);
+    const p = portal?.portal
+      ? { companies: [{ id: portal.company_id, name: portal.company_name }], companyId: portal.company_id, groups: ["base.group_portal"] }
+      : await loadProfile(o.sessionId, o.uid);
     await createSession({ sessionId: o.sessionId, uid: o.uid, name: o.name, ...p });
   } catch (e) {
     if (e instanceof OdooError) return { error: e.code === "auth" ? "Invalid login or password" : e.code === "network" || e.code === "timeout" ? "Odoo is unreachable. Check ODOO_BASE_URL and try again." : "Sign-in failed. Contact your administrator." };

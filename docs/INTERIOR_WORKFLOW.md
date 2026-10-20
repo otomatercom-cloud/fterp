@@ -20,3 +20,4 @@
 - **Reports:** by source, sales manager, stage, month, procurement vs estimate, plus CSV export (Manager, Sales Manager, Accounts, admin).
 - **Settings (admin):** assign pipeline roles to users; load/remove demo data.
 - **Tasks & snags:** the assigned Project Manager (or Manager/admin) keeps a task board per project (To do / In progress / Done). Handover is blocked while any snag is open.
+- **Customer portal:** Sales Manager/Manager create a portal login for the lead's customer contact. The customer signs in to the same app, sees only their own projects (estimate with tax, advance invoice + PDF, progress, site notes) and can approve/request changes on the estimate and confirm handover. Internal prices and stage names are never exposed; all portal calls are scoped by the user's own partner on the Odoo side.

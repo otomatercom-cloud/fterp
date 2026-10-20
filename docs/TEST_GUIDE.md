@@ -46,3 +46,11 @@ In Odoo (Developer mode) create 3 CRM opportunities with FT Source = **Meta** an
 - **Dashboard**: counts, graph, pills, recent activity change after each step.
 - **Reports** (mgr/sm/acc): tables + Download CSV.
 - **Settings** (admin): role checkboxes; log in again to see new menus.
+
+## Scenario D — Customer portal (client logs in)
+1. As sm1: open lead "Marina Penthouse Fit-out" (after the estimate exists) → card **Customer portal access** → email `rashid@example.com`, temporary password `Welcome#2026` → **Create login**.
+2. Log out. Log in with `rashid@example.com` / `Welcome#2026` → lands on **My Projects** (only that customer's projects, no internal menus).
+3. While the lead is at *Sent to client*: open the project → see estimate lines, subtotal, tax, total → **Approve estimate** (or **Request changes** → lead returns to Estimate draft). The stage history shows the client as the actor.
+4. Continue the internal flow (steps 6–12 of Scenario A). The client sees "Advance invoice" with total/balance and a PDF link, then "Work in progress" with progress % and site-update notes.
+5. At *Handover*: client opens the project → **Confirm handover** → status Completed.
+6. Negative checks: the client must not see other customers' projects, procurement prices, margins or internal stage names; a client cannot open /m/crm (no menu, no access).
