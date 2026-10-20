@@ -149,3 +149,13 @@ export type CostLine = { id: number; name: string; qty: number; est_price: numbe
 export type Costing = { estimate: number; cost: number; margin: number; lines: CostLine[] };
 export const getCosting = (s: Session, id: number) => callKw<Costing>(s.sessionId, "crm.lead", "otm_costing_data", [[id]], {}, co(s));
 export const saveCosting = (s: Session, id: number, lines: CostLine[]) => callKw<boolean>(s.sessionId, "crm.lead", "otm_save_costing", [[id], lines], {}, co(s));
+
+// ---- design studio & shop drawings ----
+export type DesignStatus = "draft" | "in_review" | "changes_requested" | "approved";
+export type Design = { id: number; lead_id: number; lead: string; name: string; kind: string; status: DesignStatus; revision: number; designer: string; due: string | false; note: string; review_note: string; approved_by: string; can_edit: boolean; can_review: boolean; files: { id: number; name: string; rev: string; pdf: boolean }[] };
+export const getDesigns = (s: Session, id: number) => callKw<Design[]>(s.sessionId, "crm.lead", "otm_designs", [[id]], {}, co(s));
+export const getDesignsAll = (s: Session) => callKw<Design[]>(s.sessionId, "crm.lead", "otm_design_all", [], {}, co(s));
+export const addDesign = (s: Session, id: number, name: string, kind: string, due: string | false, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_design", [[id], name, kind, due, note], {}, co(s));
+export const addDesignFile = (s: Session, designId: number, filename: string, b64: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_design_file", [designId, filename, b64], {}, co(s));
+export const designAction = (s: Session, designId: number, action: string, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_design_action", [designId, action, note], {}, co(s));
+export const getDesignFile = (s: Session, attId: number) => callKw<{ mimetype: string; data: string }>(s.sessionId, "crm.lead", "otm_design_file", [attId], {}, co(s));

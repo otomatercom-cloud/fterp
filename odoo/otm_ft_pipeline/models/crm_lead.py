@@ -82,6 +82,7 @@ class CrmLead(models.Model):
     otm_task_ids = fields.One2many("otm.ft.task", "lead_id", string="Tasks & Snags", copy=False)
     otm_joinery_ids = fields.One2many("otm.ft.joinery", "lead_id", string="Joinery Jobs", copy=False)
     otm_install_ids = fields.One2many("otm.ft.install", "lead_id", string="Site Visits & Installations", copy=False)
+    otm_design_ids = fields.One2many("otm.ft.design", "lead_id", string="Design Items", copy=False)
     otm_site_update_ids = fields.One2many("otm.ft.site.update", "lead_id", string="Site Updates", copy=False)
     otm_progress = fields.Integer(string="Site Progress %", compute="_compute_otm_progress", store=True, copy=False)
 
@@ -655,6 +656,126 @@ class CrmLead(models.Model):
             self._otm_portal_lead(inst.lead_id.id)  # customer: only own projects
         else:
             self.browse(inst.lead_id.id).check_access("read")
+        return {"mimetype": att.mimetype, "data": att.datas.decode() if isinstance(att.datas, bytes) else att.datas}
+
+    # ---- design studio & shop drawings ----
+    DESIGN_MIMES = ("image/jpeg", "image/png", "image/webp", "application/pdf")
+
+    def _otm_can_design(self):
+        """Who prepares design items: Manager, the assigned PM, the lead's own Sales Manager, admin."""
+        self.ensure_one()
+        roles = self._otm_user_roles()
+        u = self.env.user
+        return u.has_group("base.group_system") or MGR in roles or (PM in roles and self.otm_project_manager_id == u) or (SM in roles and self.user_id == u)
+
+    def _otm_can_review_design(self):
+        self.ensure_one()
+        roles = self._otm_user_roles()
+        u = self.env.user
+        return u.has_group("base.group_system") or MGR in roles or (SM in roles and self.user_id == u)
+
+    def _otm_design_dict(self, d):
+        atts = self.env["ir.attachment"].sudo().search([("res_model", "=", "otm.ft.design"), ("res_id", "=", d.id)], order="id")
+        lead = d.lead_id
+        return {
+            "id": d.id, "lead_id": lead.id, "lead": lead.name, "name": d.name, "kind": d.kind, "status": d.status, "revision": d.revision,
+            "designer": d.designer_id.name or "", "due": fields.Date.to_string(d.due_date) if d.due_date else False,
+            "note": d.note or "", "review_note": d.review_note or "",
+            "approved_by": d.approved_by_id.name or "", "can_edit": lead._otm_can_design(), "can_review": lead._otm_can_review_design(),
+            "files": [{"id": a.id, "name": a.name, "rev": a.description or "r1", "pdf": a.mimetype == "application/pdf"} for a in atts],
+        }
+
+    def otm_designs(self):
+        self.ensure_one()
+        return [self._otm_design_dict(d) for d in self.sudo().otm_design_ids.sorted("id", reverse=True)]
+
+    @api.model
+    def otm_design_all(self):
+        leads = self.search([("otm_stage", "not in", ("lost", False))])
+        designs = self.env["otm.ft.design"].sudo().search([("lead_id", "in", leads.ids)], limit=300)
+        return [self._otm_design_dict(d) for d in designs]
+
+    def otm_add_design(self, name, kind, due=False, note=""):
+        self.ensure_one()
+        self.check_access("read")
+        if not self._otm_can_design():
+            raise UserError(self.env._("You are not allowed to add design items to this project."))
+        name = str(name or "").strip()[:200]
+        if not name or kind not in dict(self.env["otm.ft.design"]._fields["kind"].selection):
+            raise UserError(self.env._("Enter a name and choose a type."))
+        self.env["otm.ft.design"].sudo().create({"lead_id": self.id, "name": name, "kind": kind, "due_date": due or False, "note": str(note or "").strip()[:1000]})
+        return True
+
+    @api.model
+    def _otm_design_for(self, design_id, review=False):
+        d = self.env["otm.ft.design"].sudo().browse(int(design_id))
+        if not d.exists():
+            raise UserError(self.env._("Not found."))
+        lead = self.browse(d.lead_id.id)
+        lead.check_access("read")
+        if not (lead._otm_can_review_design() if review else lead._otm_can_design()):
+            raise UserError(self.env._("You are not allowed to do this."))
+        return d, lead
+
+    @api.model
+    def otm_add_design_file(self, design_id, filename, data_b64):
+        d, lead = self._otm_design_for(design_id)
+        if d.status not in ("draft", "changes_requested"):
+            raise UserError(self.env._("Files can be added while the item is Draft or Changes requested."))
+        import base64
+        raw = base64.b64decode(data_b64 or "", validate=True)
+        if not raw or len(raw) > 7 * 1024 * 1024:
+            raise UserError(self.env._("File must be up to 7 MB."))
+        if raw[:3] == b"\xff\xd8\xff":
+            mime = "image/jpeg"
+        elif raw[:8] == b"\x89PNG\r\n\x1a\n":
+            mime = "image/png"
+        elif raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+            mime = "image/webp"
+        elif raw[:5] == b"%PDF-":
+            mime = "application/pdf"
+        else:
+            raise UserError(self.env._("Only JPEG, PNG, WebP or PDF files are allowed."))
+        if self.env["ir.attachment"].sudo().search_count([("res_model", "=", "otm.ft.design"), ("res_id", "=", d.id)]) >= 30:
+            raise UserError(self.env._("Maximum 30 files per item."))
+        self.env["ir.attachment"].sudo().create({
+            "name": (str(filename or "file").replace("/", "_").replace("\\", "_"))[:100], "description": f"r{d.revision}", "datas": data_b64,
+            "mimetype": mime, "res_model": "otm.ft.design", "res_id": d.id,
+        })
+        return True
+
+    @api.model
+    def otm_design_action(self, design_id, action, note=""):
+        review = action in ("approve", "request_changes")
+        d, lead = self._otm_design_for(design_id, review=review)
+        note = str(note or "").strip()[:1000]
+        if action == "submit":
+            if d.status not in ("draft", "changes_requested"):
+                raise UserError(self.env._("Only a draft can be sent for review."))
+            if not self.env["ir.attachment"].sudo().search_count([("res_model", "=", "otm.ft.design"), ("res_id", "=", d.id)]):
+                raise UserError(self.env._("Upload at least one file before sending for review."))
+            d.write({"status": "in_review"})
+        elif action == "approve":
+            if d.status != "in_review":
+                raise UserError(self.env._("Only an item in review can be approved."))
+            d.write({"status": "approved", "approved_by_id": self.env.user.id, "approved_on": fields.Datetime.now(), "review_note": note})
+        elif action == "request_changes":
+            if d.status != "in_review":
+                raise UserError(self.env._("Only an item in review can be sent back."))
+            if not note:
+                raise UserError(self.env._("Write what needs to change."))
+            d.write({"status": "changes_requested", "revision": d.revision + 1, "review_note": note, "approved_by_id": False, "approved_on": False})
+        else:
+            raise UserError(self.env._("Unknown action."))
+        lead.sudo().message_post(body=self.env._("Design '%(n)s': %(a)s", n=d.name, a=action.replace("_", " ")), author_id=self.env.user.partner_id.id)
+        return True
+
+    @api.model
+    def otm_design_file(self, att_id):
+        att = self.env["ir.attachment"].sudo().browse(int(att_id))
+        if not att.exists() or att.res_model != "otm.ft.design" or att.mimetype not in self.DESIGN_MIMES or self.env.user.share:
+            raise UserError(self.env._("File not found."))
+        self.browse(self.env["otm.ft.design"].sudo().browse(att.res_id).lead_id.id).check_access("read")
         return {"mimetype": att.mimetype, "data": att.datas.decode() if isinstance(att.datas, bytes) else att.datas}
 
     # ---- procurement check of the estimate (availability + costing) before Manager review / client ----

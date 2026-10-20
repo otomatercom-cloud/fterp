@@ -8,3 +8,4 @@ from . import joinery
 from . import portal
 from . import install
 from . import costing_line
+from . import design

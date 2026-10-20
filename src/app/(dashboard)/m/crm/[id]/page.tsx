@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { OdooError } from "@/lib/odoo/client";
+import { getDesigns, type Design } from "@/lib/odoo/leads";
+import { DesignAdd, DesignList } from "@/components/design-panel";
 import { getEstimate, getInvoice, getJournals, getLead, getCosting, getLogs, getProcurement, getPurchaseOrders, portalUserInfo, roleUsers } from "@/lib/odoo/leads";
 import { ACTION_LABELS, FIELD_STAGES, STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
 import { StageActions } from "@/components/stage-actions";
@@ -37,6 +39,9 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     if (e instanceof OdooError) return <p role="alert" className="text-sm text-danger">{e.code === "access" ? "You do not have access to this lead." : e.message}</p>;
     throw e;
   }
+  let designs: Design[] = [];
+  try { designs = await getDesigns(s, id); } catch { /* module not upgraded yet */ }
+  const canAddDesign = ["base.group_system", "otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_project_manager"].some((g) => s.groups.includes(g)) && lead.otm_stage !== "lost";
   const show = (f: string) => FIELD_STAGES[f].includes(lead.otm_stage as Stage);
   return (
     <div className="space-y-4">
@@ -68,6 +73,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       </div>
       {["sales_manager", "manager"].some((r) => s.groups.includes(`otm_ft_pipeline.group_ft_${r}`)) || s.groups.includes("base.group_system") ? <Card title="Customer portal access"><PortalAccess leadId={lead.id} login={portal!.login} hasPartner={portal!.has_partner} /></Card> : null}
       {costing!.lines.length > 0 && <Card title="Availability & costing (Procurement check)"><CostingEditor key={costing!.cost + ":" + costing!.lines.length + ":" + lead.otm_stage} leadId={lead.id} data={costing!} editable={lead.otm_stage === "procurement_check"} /></Card>}
+      <Card title="Design & drawings">{canAddDesign && <div className="mb-3"><DesignAdd leadId={lead.id} /></div>}<DesignList items={designs} /></Card>
       <Card title="Estimate"><EstimateEditor key={est!.lines.length + ":" + est!.total} leadId={lead.id} initial={est!.lines} untaxed={est!.untaxed} tax={est!.tax} taxName={est!.tax_name} taxRate={est!.tax_rate} editable={lead.otm_stage === "estimate_draft"} /></Card>
       {(lead.otm_stage === "procurement" || proc!.lines.length > 0) && <Card title="Procurement prices"><ProcurementEditor key={proc!.total + ":" + proc!.lines.length} leadId={lead.id} initial={proc!.lines} total={proc!.total} estimate={lead.otm_estimate_amount} editable={lead.otm_stage === "procurement" && pos!.orders.length === 0} /></Card>}
       {(lead.otm_stage === "procurement" || pos!.orders.length > 0) && <Card title="Purchase orders"><PurchaseOrders key={pos!.pending + ":" + pos!.orders.length} leadId={lead.id} data={pos!} canCreate={lead.otm_stage === "procurement"} /></Card>}

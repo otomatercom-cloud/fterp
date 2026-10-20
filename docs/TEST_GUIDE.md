@@ -65,3 +65,13 @@ In Odoo (Developer mode) create 3 CRM opportunities with FT Source = **Meta** an
 5. Log in as the customer (Scenario D): project shows installation rows with photos. At *Handover* type "Scratch on wardrobe door" → **Report issue**.
 6. Customer tries **Confirm handover** → refused (open snag). As pm1 mark the "[Client] Scratch…" snag **Done** on the project page → customer now sees it as Fixed and **Confirm handover** works → Completed.
 7. Negative: a different customer's login cannot open your photo URL (/api/photos/<id> → not available).
+
+## Scenario F — Design Studio & Shop Drawings
+1. Upgrade the addon (`-u otm_ft_pipeline`), restart Odoo. Log in as Sales Manager (owner of a lead) or Manager.
+2. CRM & Sales → open a lead → **Design & drawings** → add "Master bedroom concept" (type Concept) → Add.
+3. Click **+ file (rev 1)** and upload a JPG/PNG/PDF (max 7 MB). Thumbnail appears; click it to open.
+4. **Send for review** → status *In review*. (Sending without a file must fail.)
+5. Log in as Manager (or the lead's Sales Manager): write a note, **Request changes** → status *Changes requested*, revision becomes 2, your note shows in red. (Without a note it must fail.)
+6. Upload a new file (tagged r2) → Send for review → **Approve** → status *Approved*, "Approved by …".
+7. Add a type **Shop drawing** item the same way. It appears under **Shop Drawings**; other types under **Design Studio** (status counters on top).
+8. Negative: a Procurement/Accounts user cannot add items or approve; a non-PDF/image file renamed to .jpg is rejected.
