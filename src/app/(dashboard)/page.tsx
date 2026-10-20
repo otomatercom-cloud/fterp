@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth/session";
-import { DashCalendar, KIND } from "@/components/dash-calendar";
+import { DashCalendar } from "@/components/dash-calendar";
+import { CAL_KIND as KIND } from "@/lib/workflow/labels";
 import { pipelineStats, recentActivity, companyCurrency, getCalendar, listTasks, type StatRow, type Activity } from "@/lib/odoo/leads";
 import { ACTION_LABELS, STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
 import { AreaChart, Donut, PillGauge } from "@/components/charts";

@@ -4,7 +4,8 @@ import { requireSession } from "@/lib/auth/session";
 import { NAV, canSee } from "@/lib/permissions/nav";
 import { WorkQueue } from "@/components/work-queue";
 import { getDesignsAll, getQueue, type Design } from "@/lib/odoo/leads";
-import { DesignList, STATUS_LABEL } from "@/components/design-panel";
+import { DesignList } from "@/components/design-panel";
+import { STATUS_LABEL } from "@/lib/workflow/labels";
 
 export async function DesignOverview({ slug, title, sub, kinds }: { slug: string; title: string; sub: string; kinds?: string[] }) {
   const s = await requireSession();

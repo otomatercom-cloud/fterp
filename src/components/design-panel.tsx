@@ -3,10 +3,9 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addDesignAction, designAction_ } from "@/app/(dashboard)/m/design/actions";
+import { KIND_LABEL, STATUS_LABEL } from "@/lib/workflow/labels";
 import type { Design } from "@/lib/odoo/leads";
 
-export const KIND_LABEL: Record<string, string> = { concept: "Concept", moodboard: "Mood board", material_board: "Material board", layout: "Layout / plan", render_3d: "3D render", shop_drawing: "Shop drawing" };
-export const STATUS_LABEL: Record<string, string> = { draft: "Draft", in_review: "In review", changes_requested: "Changes requested", approved: "Approved" };
 const TONE: Record<string, string> = { draft: "text-muted", in_review: "text-gold", changes_requested: "text-danger", approved: "text-success" };
 
 function Files({ files }: { files: Design["files"] }) {

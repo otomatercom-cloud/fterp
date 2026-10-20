@@ -1,12 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { CAL_KIND as KIND } from "@/lib/workflow/labels";
 import type { CalEvent } from "@/lib/odoo/leads";
 
-export const KIND: Record<CalEvent["kind"], { label: string; dot: string }> = {
-  task: { label: "Task", dot: "bg-gold" }, snag: { label: "Snag", dot: "bg-danger" }, joinery: { label: "Joinery", dot: "bg-bronze" }, install: { label: "Installation", dot: "bg-success" },
-  design: { label: "Design", dot: "bg-rose" }, followup: { label: "Customer follow-up", dot: "bg-ink" }, payment: { label: "Payment due", dot: "bg-warning" }, delivery: { label: "Delivery", dot: "bg-primary" },
-};
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const pad = (n: number) => String(n).padStart(2, "0");
 
