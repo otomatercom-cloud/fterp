@@ -5,3 +5,6 @@ access_crm_lead_ft_manager,crm.lead ft manager,crm.model_crm_lead,group_ft_manag
 access_crm_lead_ft_project_manager,crm.lead ft project manager,crm.model_crm_lead,group_ft_project_manager,1,0,0,0
 access_crm_lead_ft_procurement,crm.lead ft procurement,crm.model_crm_lead,group_ft_procurement,1,0,0,0
 access_crm_lead_ft_accounts,crm.lead ft accounts,crm.model_crm_lead,group_ft_accounts,1,0,0,0
+access_otm_ft_proc_line_user,otm.ft.procurement.line user,model_otm_ft_procurement_line,base.group_user,1,0,0,0
+access_otm_ft_proc_line_proc,otm.ft.procurement.line procurement,model_otm_ft_procurement_line,group_ft_procurement,1,1,1,1
+access_otm_ft_site_update_user,otm.ft.site.update user,model_otm_ft_site_update,base.group_user,1,0,0,0

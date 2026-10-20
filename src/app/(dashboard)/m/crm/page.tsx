@@ -36,7 +36,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
         </select>
         <button className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-dark">Filter</button>
       </form>
-      {error && <p role="alert" className="rounded-md border border-danger/30 bg-red-50 p-3 text-sm text-danger">{error}</p>}
+      {error && <p role="alert" className="rounded-md border border-danger/30 bg-danger/15 p-3 text-sm text-danger">{error}</p>}
       {data && data.rows.length === 0 && <p className="rounded-lg border border-dashed border-line p-6 text-sm text-muted">No leads match these filters.</p>}
       {data && data.rows.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-line bg-card shadow-sm">
@@ -47,7 +47,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
             <tbody>
               {data.rows.map((l) => (
                 <tr key={l.id} className="border-t border-line align-top">
-                  <td className="px-3 py-2 font-medium"><Link href={`/m/crm/${l.id}`} className="text-primary hover:underline">{l.name}</Link></td>
+                  <td className="px-3 py-2 font-medium"><Link href={`/m/crm/${l.id}`} className="text-gold hover:underline">{l.name}</Link></td>
                   <td className="px-3 py-2">{l.partner_name || "—"}</td>
                   <td className="px-3 py-2 capitalize">{l.otm_origin}</td>
                   <td className="px-3 py-2"><span className="rounded-full bg-tint px-2 py-0.5 text-xs">{STAGE_LABELS[l.otm_stage as Stage] ?? l.otm_stage}</span></td>

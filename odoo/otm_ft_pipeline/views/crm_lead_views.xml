@@ -40,7 +40,11 @@
                         context="{'otm_action': 'record_payment'}" invisible="otm_stage != 'awaiting_advance'" groups="otm_ft_pipeline.group_ft_sales_manager,otm_ft_pipeline.group_ft_accounts"/>
                 <button name="action_otm_transition" type="object" string="Verify Payment"
                         context="{'otm_action': 'verify_payment'}" invisible="otm_stage != 'payment_verification'" groups="otm_ft_pipeline.group_ft_accounts"/>
-                <field name="otm_stage" widget="statusbar" statusbar_visible="new,assigned,estimate_draft,estimate_approved,sent_to_client,client_approved,procurement,invoice_draft,awaiting_advance,work_started"/>
+                <button name="action_otm_transition" type="object" string="Complete Work (Handover)"
+                        context="{'otm_action': 'complete_work'}" invisible="otm_stage != 'work_started'" groups="otm_ft_pipeline.group_ft_project_manager"/>
+                <button name="action_otm_transition" type="object" string="Confirm Client Handover"
+                        context="{'otm_action': 'confirm_handover'}" invisible="otm_stage != 'handover'" groups="otm_ft_pipeline.group_ft_sales_manager,otm_ft_pipeline.group_ft_manager"/>
+                <field name="otm_stage" widget="statusbar" statusbar_visible="new,assigned,estimate_draft,estimate_approved,sent_to_client,client_approved,procurement,invoice_draft,awaiting_advance,work_started,handover,completed"/>
             </xpath>
             <xpath expr="//sheet" position="inside">
                 <group name="otm_ft" string="FT Pipeline">

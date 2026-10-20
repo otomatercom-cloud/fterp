@@ -29,7 +29,7 @@ export function runTransition(s: Session, id: number, action: string) {
 }
 
 export type LeadDetail = Lead & { phone: string | false; email_from: string | false; description: string | false; otm_estimate_amount: number; otm_procurement_amount: number; otm_advance_amount: number; log_ids: number[] };
-export type Estimate = { order: string | false; total: number; lines: { name: string; qty: number; price: number; subtotal: number }[] };
+export type Estimate = { order: string | false; total: number; untaxed: number; tax: number; tax_name: string | false; tax_rate: number; lines: { name: string; qty: number; price: number; subtotal: number }[] };
 export type LogRow = { id: number; date: string; user_id: [number, string]; action: string; to_stage: string };
 const co = (s: Session) => ({ companyIds: [s.companyId] });
 
@@ -50,9 +50,42 @@ export const setLeadField = (s: Session, id: number, field: string, value: numbe
 export const saveEstimate = (s: Session, id: number, lines: { name: string; qty: number; price: number }[]) =>
   callKw<number>(s.sessionId, "crm.lead", "otm_save_estimate", [[id], lines], {}, co(s));
 
-export type InvoiceInfo = { id: number; name: string; state: string; total: number; residual: number; payment_state: string } | false;
+export type InvoiceInfo = { id: number; name: string; state: string; total: number; untaxed: number; tax: number; residual: number; payment_state: string } | false;
 export const getInvoice = (s: Session, id: number) => callKw<InvoiceInfo>(s.sessionId, "crm.lead", "otm_invoice_data", [[id]], {}, co(s));
 export const getJournals = (s: Session) => callKw<{ id: number; name: string }[]>(s.sessionId, "crm.lead", "otm_journals", [], {}, co(s));
 export const createInvoice = (s: Session, id: number, amount: number) => callKw<number>(s.sessionId, "crm.lead", "otm_create_advance_invoice", [[id], amount], {}, co(s));
 export const postInvoice = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_post_invoice", [[id]], {}, co(s));
 export const registerPayment = (s: Session, id: number, journalId: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_register_payment", [[id], journalId], {}, co(s));
+
+export type ProcLine = { name: string; vendor: string; qty: number; price: number };
+export const getProcurement = (s: Session, id: number) => callKw<{ total: number; lines: ProcLine[] }>(s.sessionId, "crm.lead", "otm_procurement_data", [[id]], {}, co(s));
+export const saveProcurement = (s: Session, id: number, lines: ProcLine[]) => callKw<number>(s.sessionId, "crm.lead", "otm_save_procurement", [[id], lines], {}, co(s));
+
+export type StatRow = { otm_stage: string; otm_origin: string; expected_revenue: number; create_date: string };
+export const pipelineStats = (s: Session) =>
+  callKw<StatRow[]>(s.sessionId, "crm.lead", "search_read", [[["type", "=", "opportunity"]]], { fields: ["otm_stage", "otm_origin", "expected_revenue", "create_date"], limit: 5000 }, co(s));
+
+export type Activity = { id: number; date: string; lead_id: [number, string]; user_id: [number, string]; action: string; to_stage: string };
+export const recentActivity = (s: Session) =>
+  callKw<Activity[]>(s.sessionId, "otm.ft.stage.log", "search_read", [[]], { fields: ["date", "lead_id", "user_id", "action", "to_stage"], limit: 8, order: "id desc" }, co(s));
+export async function companyCurrency(s: Session) {
+  const [c] = await callKw<{ currency_id: [number, string] }[]>(s.sessionId, "res.company", "read", [[s.companyId], ["currency_id"]], {}, co(s));
+  return c?.currency_id?.[1] ?? "";
+}
+
+export const demoStatus = (s: Session) => callKw<{ count: number }>(s.sessionId, "crm.lead", "otm_demo_status", [], {}, co(s));
+export const loadDemo = (s: Session) => callKw<{ created: number; invoices_skipped: number }>(s.sessionId, "crm.lead", "otm_load_demo_data", [], {}, co(s));
+export const removeDemo = (s: Session) => callKw<{ removed: number; invoices_kept: number }>(s.sessionId, "crm.lead", "otm_remove_demo_data", [], {}, co(s));
+
+export type Project = { id: number; otm_stage: string; name: string; partner_name: string | false; otm_progress: number; otm_estimate_amount: number; otm_project_manager_id: [number, string] | false; create_date: string };
+export const listProjects = (s: Session) =>
+  callKw<Project[]>(s.sessionId, "crm.lead", "search_read", [[["type", "=", "opportunity"], ["otm_stage", "in", ["work_started", "handover", "completed"]]]], {
+    fields: ["name", "partner_name", "otm_progress", "otm_estimate_amount", "otm_project_manager_id", "create_date", "otm_stage"], limit: 200, order: "id desc",
+  }, co(s));
+export type SiteUpdate = { id: number; date: string; percent: number; note: string; user: string };
+export const getSiteUpdates = (s: Session, id: number) => callKw<SiteUpdate[]>(s.sessionId, "crm.lead", "otm_site_updates", [[id]], {}, co(s));
+export const addSiteUpdate = (s: Session, id: number, percent: number, note: string) => callKw<number>(s.sessionId, "crm.lead", "otm_add_site_update", [[id], percent, note], {}, co(s));
+export const getProject = async (s: Session, id: number) => {
+  const [p] = await callKw<(Project & { otm_stage: string; phone: string | false; email_from: string | false })[]>(s.sessionId, "crm.lead", "read", [[id], ["name", "partner_name", "otm_progress", "otm_estimate_amount", "otm_project_manager_id", "create_date", "otm_stage", "phone", "email_from"]], {}, co(s));
+  return p ?? null;
+};

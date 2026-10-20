@@ -56,14 +56,14 @@ export function FlowDiagram({ flow }: { flow: Flow }) {
       <div className="overflow-auto p-2" style={{ maxHeight: "75dvh" }}>
         <svg viewBox={`0 0 ${vw} ${vh}`} width={width} role="img" aria-label={flow.title} style={{ maxWidth: zoom === "fit" ? "100%" : "none" }}>
           <defs>
-            {[["a", "#222"], ["l", "#c99a9d"]].map(([id, c]) => (
+            {[["a", "#d9c2c6"], ["l", "#c99a9d"]].map(([id, c]) => (
               <marker key={id} id={`ar-${id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill={c} /></marker>
             ))}
           </defs>
           {flow.edges.map((e, i) => {
             const a = byId.get(e.from), b = byId.get(e.to);
             if (!a || !b) return null;
-            return <path key={i} d={path(a, b)} fill="none" stroke={e.loop ? "#c99a9d" : "#222"} strokeWidth={1.5} strokeDasharray={e.loop ? "5 4" : undefined} markerEnd={`url(#ar-${e.loop ? "l" : "a"})`} />;
+            return <path key={i} d={path(a, b)} fill="none" stroke={e.loop ? "#c99a9d" : "#d9c2c6"} strokeWidth={1.5} strokeDasharray={e.loop ? "5 4" : undefined} markerEnd={`url(#ar-${e.loop ? "l" : "a"})`} />;
           })}
           {flow.nodes.map((n) => {
             const p = pos(n), s = style[n.kind ?? "step"], lines = wrap(n.label);

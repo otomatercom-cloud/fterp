@@ -17,6 +17,8 @@ STAGES = [
     ("awaiting_advance", "Awaiting Advance"),
     ("payment_verification", "Payment Verification"),
     ("work_started", "Work Started"),
+    ("handover", "Handover"),
+    ("completed", "Completed"),
     ("lost", "Lost"),
 ]
 
@@ -48,6 +50,8 @@ TRANSITIONS = {
     ("invoice_with_sales", "send_to_client"): ("awaiting_advance", [SM]),
     ("awaiting_advance", "record_payment"): ("payment_verification", [SM, ACC]),
     ("payment_verification", "verify_payment"): ("work_started", [ACC]),
+    ("work_started", "complete_work"): ("handover", [PM]),
+    ("handover", "confirm_handover"): ("completed", [SM, MGR]),
 }
 
 RR_PARAM = "otm_ft_pipeline.rr_last_user_id"
@@ -63,10 +67,25 @@ class CrmLead(models.Model):
     otm_stage = fields.Selection(STAGES, string="FT Stage", default="new", tracking=True, copy=False, index=True)
     otm_project_manager_id = fields.Many2one("res.users", string="Project Manager", tracking=True, copy=False)
     otm_estimate_amount = fields.Monetary(string="Approved Estimate", currency_field="company_currency", copy=False)
-    otm_procurement_amount = fields.Monetary(string="Procurement Total", currency_field="company_currency", tracking=True, copy=False)
+    otm_procurement_line_ids = fields.One2many("otm.ft.procurement.line", "lead_id", string="Procurement Prices", copy=False)
+    otm_procurement_amount = fields.Monetary(
+        string="Procurement Total", currency_field="company_currency", compute="_compute_otm_procurement_amount", store=True, copy=False,
+    )
     otm_advance_amount = fields.Monetary(string="Advance Received", currency_field="company_currency", tracking=True, copy=False)
     otm_invoice_id = fields.Many2one("account.move", string="Advance Invoice", copy=False, readonly=True)
     otm_log_ids = fields.One2many("otm.ft.stage.log", "lead_id", string="Stage History")
+    otm_site_update_ids = fields.One2many("otm.ft.site.update", "lead_id", string="Site Updates", copy=False)
+    otm_progress = fields.Integer(string="Site Progress %", compute="_compute_otm_progress", store=True, copy=False)
+
+    @api.depends("otm_site_update_ids.percent")
+    def _compute_otm_progress(self):
+        for lead in self:
+            lead.otm_progress = max(lead.otm_site_update_ids.mapped("percent"), default=0)
+
+    @api.depends("otm_procurement_line_ids.subtotal")
+    def _compute_otm_procurement_amount(self):
+        for lead in self:
+            lead.otm_procurement_amount = sum(lead.otm_procurement_line_ids.mapped("subtotal"))
 
     # ---- assignment -------------------------------------------------
     @api.model
@@ -96,6 +115,16 @@ class CrmLead(models.Model):
             elif vals.get("user_id"):
                 vals.setdefault("otm_stage", "assigned")
         return super().create(vals_list)
+
+    # ---- tax: always the selling company's own sales tax (e.g. UAE VAT 5%), never hard-coded ----
+    def _otm_sale_tax(self):
+        company = self.company_id or self.env.company
+        tax = company.account_sale_tax_id
+        if not tax:
+            tax = self.env["account.tax"].sudo().search(
+                [("type_tax_use", "=", "sale"), ("company_id", "=", company.id), ("amount_type", "=", "percent")], limit=1, order="sequence, id"
+            )
+        return tax
 
     # ---- workflow ---------------------------------------------------
     def _otm_user_roles(self):
@@ -130,6 +159,11 @@ class CrmLead(models.Model):
                 raise UserError(self.env._("The invoice has no registered payment in Accounting yet."))
             if abs(inv.amount_total - self.otm_advance_amount) > 0.01:
                 raise UserError(self.env._("Advance recorded (%(a)s) differs from the invoice (%(b)s).", a=self.otm_advance_amount, b=inv.amount_total))
+        if action == "complete_work":
+            if self.otm_progress < 100:
+                raise UserError(self.env._("Site progress must reach 100%% before handover (now %s%%).", self.otm_progress))
+            if not (self.env.user.has_group("base.group_system") or self.otm_project_manager_id == self.env.user):
+                raise UserError(self.env._("Only the assigned Project Manager can complete the work."))
         if action == "record_payment" and self.otm_advance_amount <= 0:
             raise UserError(self.env._("Enter the advance amount received."))
 
@@ -147,7 +181,7 @@ class CrmLead(models.Model):
             vals = {"otm_stage": to_stage}
             if action == "submit_to_manager":
                 latest = lead.order_ids.sorted("id")[-1:]
-                vals["otm_estimate_amount"] = latest.amount_total
+                vals["otm_estimate_amount"] = latest.amount_untaxed  # pre-tax: comparable with procurement costs
             from_stage = lead.otm_stage
             lead.sudo().write(vals)  # role verified above with the real user
             self.env["otm.ft.stage.log"].sudo().create(
@@ -168,7 +202,6 @@ class CrmLead(models.Model):
     FIELD_RULES = {
         "user_id": ([MGR], ("new", "assigned"), ROLE_GROUPS[SM]),
         "otm_project_manager_id": ([MGR], ("client_approved", "pm_assigned"), ROLE_GROUPS[PM]),
-        "otm_procurement_amount": ([PROC, MGR], ("procurement",), None),
         "otm_advance_amount": ([SM, ACC], ("awaiting_advance",), None),
     }
 
@@ -198,9 +231,14 @@ class CrmLead(models.Model):
     def otm_estimate_data(self):
         self.ensure_one()
         order = self.sudo().order_ids.sorted("id")[-1:]
+        tax = self._otm_sale_tax()
         return {
             "order": order.name or False,
             "total": order.amount_total if order else 0.0,
+            "untaxed": order.amount_untaxed if order else 0.0,
+            "tax": order.amount_tax if order else 0.0,
+            "tax_name": tax.name if tax else False,
+            "tax_rate": tax.amount if tax and tax.amount_type == "percent" else 0.0,
             "lines": [
                 {"name": l.name, "qty": l.product_uom_qty, "price": l.price_unit, "subtotal": l.price_subtotal}
                 for l in order.order_line if not l.display_type
@@ -215,12 +253,13 @@ class CrmLead(models.Model):
             raise UserError(self.env._("Click 'Create estimate' first; the estimate is editable only as a draft."))
         if not lines or len(lines) > 200:
             raise UserError(self.env._("Add between 1 and 200 estimate lines."))
+        tax = self._otm_sale_tax()
         cmds = []
         for l in lines:
             name, qty, price = str(l.get("name", "")).strip()[:200], float(l.get("qty", 0)), float(l.get("price", 0))
             if not name or qty <= 0 or price < 0:
                 raise UserError(self.env._("Each line needs a description, a quantity above 0 and a price of 0 or more."))
-            cmds.append((0, 0, {"name": name, "product_uom_qty": qty, "price_unit": price}))
+            cmds.append((0, 0, {"name": name, "product_uom_qty": qty, "price_unit": price, "tax_ids": [(6, 0, tax.ids)]}))
         if not self.partner_id:
             self.partner_id = self.env["res.partner"].create({
                 "name": self.partner_name or self.name, "phone": self.phone, "email": self.email_from,
@@ -231,7 +270,7 @@ class CrmLead(models.Model):
             order.write({"order_line": cmds})
         else:
             order = self.env["sale.order"].create({"partner_id": self.partner_id.id, "opportunity_id": self.id, "order_line": cmds})
-        return order.amount_total
+        return order.amount_untaxed
 
     # ---- accounting (runs as the real user, so Odoo accounting ACLs apply) ----
     def _otm_require(self, role, stages):
@@ -256,7 +295,10 @@ class CrmLead(models.Model):
             "move_type": "out_invoice",
             "partner_id": self.partner_id.id,
             "invoice_origin": self.name,
-            "invoice_line_ids": [(0, 0, {"name": self.env._("Advance payment - %s", self.name), "quantity": 1, "price_unit": amount})],
+            "invoice_line_ids": [(0, 0, {
+                "name": self.env._("Advance payment - %s", self.name), "quantity": 1, "price_unit": amount,
+                "tax_ids": [(6, 0, self._otm_sale_tax().ids)],
+            })],
         })
         self.sudo().write({"otm_invoice_id": move.id})
         return move.id
@@ -288,9 +330,59 @@ class CrmLead(models.Model):
         if not inv:
             return False
         return {"id": inv.id, "name": inv.name or "Draft", "state": inv.state, "total": inv.amount_total,
+                "untaxed": inv.amount_untaxed, "tax": inv.amount_tax,
                 "residual": inv.amount_residual, "payment_state": inv.payment_state}
 
     @api.model
     def otm_journals(self):
         js = self.env["account.journal"].search([("type", "in", ("bank", "cash"))])
         return [{"id": j.id, "name": j.name} for j in js]
+
+    def otm_procurement_data(self):
+        self.ensure_one()
+        lines = self.sudo().otm_procurement_line_ids
+        return {
+            "total": sum(lines.mapped("subtotal")),
+            "lines": [{"name": l.name, "vendor": l.vendor or "", "qty": l.qty, "price": l.price} for l in lines],
+        }
+
+    def otm_save_procurement(self, lines):
+        self._otm_require(PROC, ("procurement",))
+        if not lines or len(lines) > 200:
+            raise UserError(self.env._("Add between 1 and 200 price lines."))
+        vals = []
+        for l in lines:
+            name, qty, price = str(l.get("name", "")).strip()[:200], float(l.get("qty", 0)), float(l.get("price", 0))
+            if not name or qty <= 0 or price < 0:
+                raise UserError(self.env._("Each line needs an item, a quantity above 0 and a price of 0 or more."))
+            vals.append((0, 0, {"name": name, "vendor": str(l.get("vendor", "")).strip()[:120], "qty": qty, "price": price}))
+        self.otm_procurement_line_ids.unlink()
+        self.write({"otm_procurement_line_ids": vals})
+        return self.otm_procurement_amount
+
+    # ---- project execution (after work starts) ----
+    def otm_site_updates(self):
+        self.ensure_one()
+        return [
+            {"id": u.id, "date": fields.Datetime.to_string(u.date), "percent": u.percent, "note": u.note, "user": u.user_id.name}
+            for u in self.sudo().otm_site_update_ids.sorted("id", reverse=True)[:100]
+        ]
+
+    def otm_add_site_update(self, percent, note):
+        self.ensure_one()
+        roles = self._otm_user_roles()
+        is_pm = self.otm_project_manager_id == self.env.user
+        if not (self.env.user.has_group("base.group_system") or MGR in roles or (PM in roles and is_pm)):
+            raise UserError(self.env._("Only the assigned Project Manager can add site updates."))
+        if self.otm_stage != "work_started":
+            raise UserError(self.env._("Site updates are available after work has started."))
+        percent = int(percent)
+        note = str(note or "").strip()[:500]
+        if not 0 <= percent <= 100:
+            raise UserError(self.env._("Progress must be between 0 and 100."))
+        if percent < self.otm_progress:
+            raise UserError(self.env._("Progress cannot go below the last update (%s%%).", self.otm_progress))
+        if not note:
+            raise UserError(self.env._("Add a short note about the work done."))
+        self.env["otm.ft.site.update"].sudo().create({"lead_id": self.id, "percent": percent, "note": note, "user_id": self.env.user.id})
+        return self.sudo().otm_progress

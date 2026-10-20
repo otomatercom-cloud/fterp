@@ -1,22 +1,49 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-primary: #6b293b;
-  --color-primary-dark: #55202f;
-  --color-sidebar: #6b293b;
-  --color-rose: #c99a9d;
-  --color-tint: #f7f4f5;
-  --color-bg: #ffffff;
-  --color-card: #ffffff;
-  --color-ink: #222222;
-  --color-muted: #6b6165;
-  --color-line: #e8e0e2;
-  --color-success: #16a34a;
-  --color-warning: #d97706;
-  --color-danger: #dc2626;
+  --color-primary: #8a3550;
+  --color-primary-dark: #6b293b;
+  --color-brand: #6b293b;
+  --color-sidebar: rgba(22, 9, 14, 0.82);
+  --color-rose: #d98fa0;
+  --color-gold: #e8bf7e;
+  --color-bronze: #c48a6a;
+  --color-tint: rgba(255, 255, 255, 0.06);
+  --color-bg: #140a0e;
+  --color-card: rgba(255, 255, 255, 0.05);
+  --color-ink: #f4ebe8;
+  --color-muted: #b5a3a8;
+  --color-line: rgba(217, 143, 160, 0.22);
+  --color-success: #3ecf8e;
+  --color-warning: #f0a43a;
+  --color-danger: #ef5b6b;
   --font-sans: ui-sans-serif, system-ui, "Inter", sans-serif;
 }
 
-body { background: var(--color-bg); color: var(--color-ink); }
-:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+html { color-scheme: dark; }
+body {
+  color: var(--color-ink);
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(900px 500px at 8% -5%, rgba(138, 53, 80, 0.45), transparent 60%),
+    radial-gradient(800px 500px at 100% 0%, rgba(232, 191, 126, 0.12), transparent 60%);
+  background-attachment: fixed;
+}
+:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
 html, body { overflow-x: hidden; }
+
+/* Glass surfaces */
+.bg-card, .glass {
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025));
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.glass { border: 1px solid var(--color-line); border-radius: 1rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.glow-gold { border-color: rgba(232, 191, 126, 0.55); box-shadow: 0 0 28px rgba(232, 191, 126, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+.glow-rose { border-color: rgba(239, 91, 107, 0.55); box-shadow: 0 0 28px rgba(239, 91, 107, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+.glow-bronze { border-color: rgba(196, 138, 106, 0.55); box-shadow: 0 0 28px rgba(196, 138, 106, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+
+/* Form controls on dark glass */
+input, select, textarea { background-color: rgba(255, 255, 255, 0.06); color: var(--color-ink); }
+input::placeholder, textarea::placeholder { color: var(--color-muted); }
+option { background-color: #20111a; color: #f4ebe8; }

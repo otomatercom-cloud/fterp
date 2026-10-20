@@ -13,13 +13,15 @@ type Props = { items: Item[]; userName: string; companies: { id: number; name: s
 // Original logo file, unmodified. Its background matches the sidebar maroon.
 function Logo({ collapsed }: { collapsed: boolean }) {
   return collapsed ? (
-    <div className="mx-auto my-3 size-11 overflow-hidden" aria-label="FT Interior Design & Architecture">
+    <div className="mx-auto my-3 size-11 overflow-hidden rounded-lg bg-brand" aria-label="FT Interior Design & Architecture">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/ft-logo.jpg" alt="FT Interior Design & Architecture" className="max-w-none" style={{ width: 130, marginLeft: -42, marginTop: -21 }} />
     </div>
   ) : (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src="/ft-logo.jpg" alt="FT Interior Design & Architecture" className="mx-auto mt-2 w-44" />
+    <div className="mx-3 mt-3 overflow-hidden rounded-xl bg-brand">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/ft-logo.jpg" alt="FT Interior Design & Architecture" className="mx-auto w-44" />
+    </div>
   );
 }
 
@@ -33,7 +35,7 @@ function NavList({ items, collapsed, onNavigate }: { items: Item[]; collapsed: b
         const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
           <Link key={i.slug} href={href} onClick={onNavigate} title={i.label}
-            className={cn("flex h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors", active ? "bg-white/15 font-medium text-white shadow-[inset_3px_0_0_var(--color-rose)]" : "text-white/80 hover:bg-white/10 hover:text-white")}>
+            className={cn("flex h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors", active ? "bg-white/15 font-medium text-white shadow-[inset_3px_0_0_var(--color-gold)]" : "text-white/80 hover:bg-white/10 hover:text-white")}>
             <Icon className="size-4 shrink-0" />
             {!collapsed && <span className="truncate">{i.label}</span>}
           </Link>
@@ -48,7 +50,7 @@ export function Shell({ items, userName, companies, companyId, children }: Props
   const [drawer, setDrawer] = useState(false);
   return (
     <div className="flex min-h-dvh">
-      <aside className={cn("sticky top-0 hidden h-dvh flex-col bg-sidebar transition-[width] md:flex", collapsed ? "w-16" : "w-64")}>
+      <aside className={cn("sticky top-0 hidden h-dvh flex-col border-r border-line bg-sidebar backdrop-blur-xl transition-[width] md:flex", collapsed ? "w-16" : "w-64")}>
         <Logo collapsed={collapsed} />
         <NavList items={items} collapsed={collapsed} />
       </aside>
@@ -65,14 +67,14 @@ export function Shell({ items, userName, companies, companyId, children }: Props
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-card px-3">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-sidebar px-3 backdrop-blur-xl">
           <button aria-label="Open menu" className="grid size-10 place-items-center md:hidden" onClick={() => setDrawer(true)}><Menu className="size-5" /></button>
           <button aria-label="Toggle sidebar" className="hidden size-10 place-items-center md:grid" onClick={() => setCollapsed((c) => !c)}>
             {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
           </button>
           {companies.length > 1 ? (
             <form action={switchCompanyAction}>
-              <select name="companyId" defaultValue={companyId} aria-label="Company" onChange={(e) => e.currentTarget.form?.requestSubmit()} className="h-9 max-w-40 rounded-md border border-line bg-white px-2 text-sm">
+              <select name="companyId" defaultValue={companyId} aria-label="Company" onChange={(e) => e.currentTarget.form?.requestSubmit()} className="h-9 max-w-40 rounded-md border border-line bg-card px-2 text-sm">
                 {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </form>

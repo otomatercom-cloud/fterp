@@ -30,3 +30,9 @@ test("procurement over estimate is flagged", () => {
   assert.equal(procurementCheck(100, 100), "ok");
   assert.equal(procurementCheck(101, 100), "needs_manager_approval");
 });
+test("handover only by PM, sign-off by sales or manager", () => {
+  assert.equal(transition("work_started", "complete_work", ["project_manager"]), "handover");
+  assert.throws(() => transition("work_started", "complete_work", ["sales_manager"]));
+  assert.equal(transition("handover", "confirm_handover", ["sales_manager"]), "completed");
+  assert.throws(() => transition("handover", "confirm_handover", ["project_manager"]));
+});

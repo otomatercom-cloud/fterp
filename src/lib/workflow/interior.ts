@@ -9,7 +9,7 @@ export type Stage =
   | "client_approved" | "pm_assigned"
   | "procurement" | "procurement_approved"
   | "invoice_draft" | "invoice_with_sales" | "awaiting_advance" | "payment_verification"
-  | "work_started" | "lost";
+  | "work_started" | "handover" | "completed" | "lost";
 
 export type Transition = { from: Stage; action: string; to: Stage; by: Role[] };
 
@@ -31,6 +31,8 @@ export const TRANSITIONS: Transition[] = [
   { from: "invoice_with_sales", action: "send_to_client", to: "awaiting_advance", by: ["sales_manager"] },
   { from: "awaiting_advance", action: "record_payment", to: "payment_verification", by: ["sales_manager", "accounts"] },
   { from: "payment_verification", action: "verify_payment", to: "work_started", by: ["accounts"] }, // PM may start only after this
+  { from: "work_started", action: "complete_work", to: "handover", by: ["project_manager"] }, // only at 100% site progress
+  { from: "handover", action: "confirm_handover", to: "completed", by: ["sales_manager", "manager"] }, // client sign-off recorded by sales
 ];
 
 export function allowedActions(stage: Stage, roles: Role[]): Transition[] {
@@ -65,19 +67,18 @@ export const STAGE_LABELS: Record<Stage, string> = {
   estimate_approved: "Estimate approved", sent_to_client: "Sent to client", client_approved: "Client approved",
   pm_assigned: "PM assigned", procurement: "Procurement", procurement_approved: "Procurement approved",
   invoice_draft: "Invoice draft", invoice_with_sales: "Invoice with sales", awaiting_advance: "Awaiting advance",
-  payment_verification: "Payment verification", work_started: "Work started", lost: "Lost",
+  payment_verification: "Payment verification", work_started: "Work started", handover: "Handover", completed: "Completed", lost: "Lost",
 };
 export const ACTION_LABELS: Record<string, string> = {
   assign: "Assign lead", create_estimate: "Create estimate", submit_to_manager: "Submit to manager", approve: "Approve estimate",
   reject: "Reject", send_to_client: "Send to client", client_approve: "Client approved", client_requests_changes: "Client wants changes",
   mark_lost: "Mark lost", assign_project_manager: "Assign PM", send_to_procurement: "Send to procurement", approve_prices: "Approve prices",
-  start_invoice: "Start invoice", send_to_sales: "Send to sales", record_payment: "Record advance", verify_payment: "Verify payment",
+  start_invoice: "Start invoice", send_to_sales: "Send to sales", record_payment: "Record advance", verify_payment: "Verify payment", complete_work: "Complete work (handover)", confirm_handover: "Confirm client handover",
 };
 
 /** Inputs the UI shows per stage (Odoo re-checks role + stage on every write). */
 export const FIELD_STAGES: Record<string, Stage[]> = {
   user_id: ["new", "assigned"],
   otm_project_manager_id: ["client_approved", "pm_assigned"],
-  otm_procurement_amount: ["procurement"],
   otm_advance_amount: ["awaiting_advance"],
 };
