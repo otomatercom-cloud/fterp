@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth/session";
-import { pipelineStats, recentActivity, companyCurrency, type StatRow, type Activity } from "@/lib/odoo/leads";
+import { DashCalendar, KIND } from "@/components/dash-calendar";
+import { pipelineStats, recentActivity, companyCurrency, getCalendar, listTasks, type StatRow, type Activity } from "@/lib/odoo/leads";
 import { ACTION_LABELS, STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
 import { AreaChart, Donut, PillGauge } from "@/components/charts";
 
@@ -21,9 +22,18 @@ function ago(iso: string) {
   return `${Math.round(m / 1440)} d ago`;
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ cm?: string }> }) {
   const s = await requireSession();
   if (s.groups.includes("base.group_portal") && !s.groups.includes("base.group_system")) redirect("/m/portal");
+  const cmq = (await searchParams).cm;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(cmq ?? "") ? (cmq as string) : todayIso.slice(0, 7);
+  const [cy, cm] = month.split("-").map(Number);
+  const gridFrom = new Date(Date.UTC(cy, cm - 1, 1) - 6 * 86400000).toISOString().slice(0, 10);
+  const gridTo = new Date(Date.UTC(cy, cm, 0) + 6 * 86400000).toISOString().slice(0, 10);
+  const overdueFrom = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const [calEvents, recent, waiting] = await Promise.all([getCalendar(s, gridFrom, gridTo), getCalendar(s, overdueFrom, todayIso), listTasks(s).catch(() => [])]);
+  const todays = recent.filter((e) => e.date === todayIso), overdueEv = recent.filter((e) => e.date < todayIso);
   const company = s.companies.find((c) => c.id === s.companyId)?.name;
   const [rowsR, actR, curR] = await Promise.allSettled([pipelineStats(s), recentActivity(s), companyCurrency(s)]);
   const rows: StatRow[] | null = rowsR.status === "fulfilled" ? rowsR.value : null;
@@ -64,6 +74,17 @@ export default async function Home() {
       <div>
         <h1 className="text-2xl font-semibold">Group Overview</h1>
         <p className="text-sm text-muted">{company} · live pipeline from Odoo (leads you can access)</p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="glass p-5 lg:col-span-1">
+          <h2 className="mb-2 font-semibold">Today</h2>
+          {todays.length === 0 ? <p className="text-sm text-muted">No dated work today.</p> : <ul className="space-y-1 text-sm">{todays.map((e, i) => <li key={i}><Link href={e.link} className="flex items-start gap-2 hover:underline"><i className={`mt-1.5 size-2 shrink-0 rounded-full ${KIND[e.kind].dot}`} /><span>{e.title}<span className="text-xs text-muted"> · {e.project}</span></span></Link></li>)}</ul>}
+          {overdueEv.length > 0 && (<><h3 className="mb-1 mt-3 text-sm font-semibold text-danger">Overdue ({overdueEv.length})</h3><ul className="space-y-1 text-xs">{overdueEv.slice(0, 6).map((e, i) => <li key={i}><Link href={e.link} className="hover:underline">{e.date} · {e.title}</Link></li>)}</ul></>)}
+          <h3 className="mb-1 mt-3 text-sm font-semibold">Waiting for your action ({waiting.length})</h3>
+          {waiting.length === 0 ? <p className="text-xs text-muted">Nothing waiting.</p> : <ul className="space-y-1 text-xs">{waiting.slice(0, 6).map((l) => <li key={l.id}><Link href={`/m/crm/${l.id}`} className="hover:underline">{l.name}</Link></li>)}{waiting.length > 6 && <li><Link href="/m/tasks" className="text-gold underline">See all</Link></li>}</ul>}
+        </div>
+        <div className="lg:col-span-2"><DashCalendar month={month} events={calEvents} today={todayIso} /></div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

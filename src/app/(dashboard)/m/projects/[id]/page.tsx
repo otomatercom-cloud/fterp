@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/auth/session";
 import { NAV, canSee } from "@/lib/permissions/nav";
 import { OdooError } from "@/lib/odoo/client";
 import { getProject, getSiteUpdates, getTasks, getJoinery, getInstalls, type SiteUpdate, type Task, type Joinery, type Install } from "@/lib/odoo/leads";
+import { ProjectGuide } from "@/components/project-guide";
 import { InstallPanel } from "@/components/install-panel";
 import { JoineryBoard } from "@/components/joinery-board";
 import { TaskBoard } from "@/components/task-board";
@@ -37,6 +38,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
         <div className="flex justify-between text-sm"><span className="text-muted">Overall progress</span><b className="text-gold">{p.otm_progress}%</b></div>
         <div className="mt-2 h-3 rounded-full bg-white/10"><div className="h-3 rounded-full bg-gradient-to-r from-primary to-gold" style={{ width: `${p.otm_progress}%` }} /></div>
       </div>
+      <ProjectGuide stage={p.otm_stage as Stage} groups={s.groups} />
       {p.otm_stage !== "completed" && <section className="glass p-5"><h2 className="mb-3 text-sm font-semibold">Next step</h2><StageActions id={p.id} stage={p.otm_stage} />{p.otm_stage === "work_started" && <p className="mt-2 text-xs text-muted">Handover is possible once site progress reaches 100%.</p>}</section>}
       <section className="glass p-5"><h2 className="mb-3 text-sm font-semibold">Site visits &amp; installation</h2><InstallPanel leadId={p.id} items={installs} canEdit={canUpdate && p.otm_stage !== "completed"} /></section>
       <section className="glass p-5"><h2 className="mb-3 text-sm font-semibold">Joinery jobs</h2><JoineryBoard jobs={joinery} leadId={p.id} canEdit={canUpdate && p.otm_stage !== "completed"} /></section>

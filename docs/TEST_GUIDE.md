@@ -155,3 +155,9 @@ Top bar → palette dropdown (next to your name): **Maroon (dark)**, **Day (ligh
 5. After an expense is approved, balance below the low-balance level notifies the holder and Accounts.
 6. **Statement** tab: pick a month → opening, top-ups, expenses, count adjustments, closing per holder; **Download CSV** gives every line with its journal entry number.
 7. Verify in Odoo: Accounting → Journal Entries → petty journal: debits = credits, expense accounts match the categories.
+
+## Dashboard — calendar and today
+Dashboard top: **Today** (dated work due today, overdue items, leads waiting for your action) and a month **Calendar** (‹ Today › to change month, click a day to list its items). Dots: task, snag, joinery due, installation/site visit, design due, payment due (Accounts/Manager), delivery expected (Procurement/Manager/PM). Items you cannot access never appear. Create test data: open a project → add a task with a due date, or use demo data.
+
+## Project guide (every lead/project page)
+Open any lead (CRM) or project: the top card shows the 7 phases (Lead → Handover), whether it is **your turn** or who the project is waiting for, the numbered steps for the current stage, a shortcut to the right module, what happens next and what to do if something is wrong. Check with different demo logins: the badge changes between "Your turn" and "Waiting for …".

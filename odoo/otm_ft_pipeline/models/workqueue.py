@@ -1,4 +1,7 @@
-from odoo import api, models
+from odoo import api, fields, models
+from odoo.exceptions import UserError
+
+from .crm_lead import ACC, MGR
 
 
 QUEUES = {
@@ -35,3 +38,38 @@ class CrmLeadQueue(models.Model):
         leads = self.search([("otm_stage", "in", ("work_started", "handover", "completed"))])
         return [{**self._otm_install_dict(i), "lead_id": i.lead_id.id, "project": i.lead_id.name}
                 for i in self.sudo().env["otm.ft.install"].search([("lead_id", "in", leads.ids)], order="id desc", limit=300)]
+
+    @api.model
+    def otm_calendar(self, date_from, date_to):
+        """Dated work for the calendar/today panel, limited to what the user can see (record rules apply to the leads)."""
+        d0, d1 = fields.Date.from_string(date_from), fields.Date.from_string(date_to)
+        if (d1 - d0).days > 70:
+            raise UserError(self.env._("Choose a shorter date range."))
+        roles = self._otm_user_roles()
+        leads = self.search([("otm_stage", "not in", ("lost", False))], limit=500)
+        ids = leads.ids
+        env = self.sudo().env
+        ev = []
+
+        def add(d, title, kind, lead, extra=""):
+            if d and d0 <= d <= d1:
+                ev.append({"date": fields.Date.to_string(d), "title": title, "kind": kind, "link": f"/m/crm/{lead.id}", "project": lead.name, "extra": extra})
+
+        for t in env["otm.ft.task"].search([("lead_id", "in", ids), ("status", "!=", "done"), ("due_date", ">=", d0), ("due_date", "<=", d1)]):
+            add(t.due_date, t.name, "snag" if t.kind == "snag" else "task", t.lead_id, "Snag" if t.kind == "snag" else "Task")
+        for j in env["otm.ft.joinery"].search([("lead_id", "in", ids), ("stage", "!=", "installed"), ("due_date", ">=", d0), ("due_date", "<=", d1)]):
+            add(j.due_date, f"Joinery: {j.name}", "joinery", j.lead_id)
+        for i in env["otm.ft.install"].search([("lead_id", "in", ids), ("status", "!=", "done"), ("planned_date", ">=", d0), ("planned_date", "<=", d1)]):
+            add(i.planned_date, f"{i.kind or 'Site'}: {i.name}", "install", i.lead_id)
+        for d in env["otm.ft.design"].search([("lead_id", "in", ids), ("status", "!=", "approved"), ("due_date", ">=", d0), ("due_date", "<=", d1)]):
+            add(d.due_date, f"Design: {d.name}", "design", d.lead_id)
+        if ACC in roles or MGR in roles or self.env.user.has_group("base.group_system"):
+            for m in env["otm.ft.milestone"].search([("lead_id", "in", ids)]):
+                inv = m.invoice_id
+                if inv and inv.state == "posted" and inv.payment_state not in ("paid", "in_payment"):
+                    add(inv.invoice_date_due or m.due_date, f"Payment due: {m.name} ({inv.amount_residual:g})", "payment", m.lead_id)
+        if any(r in roles for r in ("procurement", "manager", "project_manager")) or self.env.user.has_group("base.group_system"):
+            for po in env["purchase.order"].search([("otm_lead_id", "in", ids), ("state", "in", ("purchase", "done")), ("otm_receipt_state", "!=", "received"), ("otm_expected_date", ">=", d0), ("otm_expected_date", "<=", d1)]):
+                add(po.otm_expected_date, f"Delivery: {po.name} · {po.partner_id.name}", "delivery", po.otm_lead_id)
+        ev.sort(key=lambda e: (e["date"], e["kind"]))
+        return ev

@@ -10,6 +10,7 @@ import { getRates, getEstRevisions, type Rate, type EstRev } from "@/lib/odoo/le
 import { EstimateRevisions } from "@/components/estimate-revisions";
 import { getEstimate, getInvoice, getJournals, getLead, getCosting, getLogs, getProcurement, getPurchaseOrders, portalUserInfo, roleUsers } from "@/lib/odoo/leads";
 import { ACTION_LABELS, FIELD_STAGES, STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
+import { ProjectGuide } from "@/components/project-guide";
 import { StageActions } from "@/components/stage-actions";
 import { FieldSetter } from "@/components/field-setter";
 import { ProcurementEditor } from "@/components/procurement-editor";
@@ -64,6 +65,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <span className="rounded-full bg-primary px-3 py-1 text-xs text-white">{STAGE_LABELS[lead.otm_stage as Stage]}</span>
         {["work_started", "handover", "completed"].includes(lead.otm_stage) && <Link href={`/m/projects/${lead.id}`} className="rounded-full border border-gold/60 px-3 py-1 text-xs text-gold hover:bg-tint">Open project →</Link>}
       </div>
+      <ProjectGuide stage={lead.otm_stage as Stage} groups={s.groups} />
       <Card title="Next step"><StageActions id={lead.id} stage={lead.otm_stage} /></Card>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Lead details">

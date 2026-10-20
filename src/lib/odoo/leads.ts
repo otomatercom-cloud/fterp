@@ -264,3 +264,6 @@ export const savePettySetup = (s: Session, journal: number, source: number, diff
 export const postPettyPending = (s: Session) => callKw<{ posted: number; failed: number }>(s.sessionId, "crm.lead", "otm_petty_post_pending", [], {}, co(s));
 export const getPettyStatement = (s: Session, month: string) => callKw<PettyStatement>(s.sessionId, "crm.lead", "otm_petty_statement", [month], {}, co(s));
 export const getPettyStatementCsv = (s: Session, month: string) => callKw<string>(s.sessionId, "crm.lead", "otm_petty_statement_csv", [month], {}, co(s));
+
+export type CalEvent = { date: string; title: string; kind: "task" | "snag" | "joinery" | "install" | "design" | "payment" | "delivery"; link: string; project: string; extra: string };
+export const getCalendar = (s: Session, from: string, to: string) => callKw<CalEvent[]>(s.sessionId, "crm.lead", "otm_calendar", [from, to], {}, co(s)).catch(() => [] as CalEvent[]);
