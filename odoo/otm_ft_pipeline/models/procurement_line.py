@@ -12,6 +12,7 @@ class OtmFtProcurementLine(models.Model):
     qty = fields.Float(default=1.0, required=True)
     price = fields.Float(string="Unit Price", required=True)
     subtotal = fields.Float(compute="_compute_subtotal", store=True)
+    purchase_id = fields.Many2one("purchase.order", string="Purchase Order", readonly=True, copy=False, ondelete="set null")
 
     @api.depends("qty", "price")
     def _compute_subtotal(self):

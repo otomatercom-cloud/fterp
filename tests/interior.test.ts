@@ -36,3 +36,10 @@ test("handover only by PM, sign-off by sales or manager", () => {
   assert.equal(transition("handover", "confirm_handover", ["sales_manager"]), "completed");
   assert.throws(() => transition("handover", "confirm_handover", ["project_manager"]));
 });
+import { tasksDomain, rolesFromGroups } from "../src/lib/workflow/roles.ts";
+test("tasks domain scopes sales manager and PM to their own leads", () => {
+  const d = JSON.stringify(tasksDomain(["sales_manager"], 7));
+  assert.ok(d.includes('"user_id","=",7'));
+  assert.deepEqual(rolesFromGroups(["otm_ft_pipeline.group_ft_accounts"]), ["accounts"]);
+  assert.equal(JSON.stringify(tasksDomain([], 1)), '[["id","=",0]]');
+});

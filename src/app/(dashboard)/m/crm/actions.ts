@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth/session";
 import { OdooError } from "@/lib/odoo/client";
-import { createInvoice, createLead, postInvoice, registerPayment, runTransition, saveEstimate, saveProcurement, setLeadField } from "@/lib/odoo/leads";
+import { createInvoice, createLead, createPurchaseOrders, postInvoice, registerPayment, runTransition, saveEstimate, saveProcurement, setLeadField } from "@/lib/odoo/leads";
 import { FIELD_STAGES, TRANSITIONS } from "@/lib/workflow/interior";
 
 type R = { error?: string };
@@ -93,4 +93,13 @@ export async function saveProcurementAction(leadId: number, input: unknown): Pro
   try { await saveProcurement(s, leadId, p.data); } catch (e) { return fail(e); }
   revalidatePath("/m/crm", "layout");
   return {};
+}
+
+export async function createPurchaseOrdersAction(leadId: number): Promise<R & { count?: number }> {
+  if (!id.safeParse(leadId).success) return { error: "Invalid request" };
+  const s = await requireSession();
+  let count = 0;
+  try { count = await createPurchaseOrders(s, leadId); } catch (e) { return fail(e); }
+  revalidatePath("/m/crm", "layout");
+  return { count };
 }

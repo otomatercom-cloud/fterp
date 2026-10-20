@@ -89,3 +89,26 @@ export const getProject = async (s: Session, id: number) => {
   const [p] = await callKw<(Project & { otm_stage: string; phone: string | false; email_from: string | false })[]>(s.sessionId, "crm.lead", "read", [[id], ["name", "partner_name", "otm_progress", "otm_estimate_amount", "otm_project_manager_id", "create_date", "otm_stage", "phone", "email_from"]], {}, co(s));
   return p ?? null;
 };
+
+export type PoData = { pending: number; orders: { id: number; name: string; vendor: string; state: string; total: number }[] };
+export const getPurchaseOrders = (s: Session, id: number) => callKw<PoData>(s.sessionId, "crm.lead", "otm_po_data", [[id]], {}, co(s));
+export const createPurchaseOrders = (s: Session, id: number) => callKw<number>(s.sessionId, "crm.lead", "otm_create_purchase_orders", [[id]], {}, co(s));
+
+import { rolesFromGroups, tasksDomain } from "@/lib/workflow/roles";
+export const taskDomain = (s: Session) => tasksDomain(rolesFromGroups(s.groups), s.uid);
+export const taskCount = (s: Session) => callKw<number>(s.sessionId, "crm.lead", "search_count", [[["type", "=", "opportunity"], ...(taskDomain(s) as never[])]], {}, co(s));
+export const listTasks = (s: Session) =>
+  callKw<Lead[]>(s.sessionId, "crm.lead", "search_read", [[["type", "=", "opportunity"], ...(taskDomain(s) as never[])]], {
+    fields: ["name", "partner_name", "otm_origin", "otm_stage", "user_id", "otm_project_manager_id", "expected_revenue", "create_date"], limit: 100, order: "write_date asc",
+  }, co(s));
+
+export type ReportRow = { id: number; name: string; partner_name: string | false; otm_origin: string; otm_stage: string; user_id: [number, string] | false;
+  expected_revenue: number; otm_estimate_amount: number; otm_procurement_amount: number; otm_progress: number; create_date: string };
+export const reportRows = (s: Session) =>
+  callKw<ReportRow[]>(s.sessionId, "crm.lead", "search_read", [[["type", "=", "opportunity"]]], {
+    fields: ["name", "partner_name", "otm_origin", "otm_stage", "user_id", "expected_revenue", "otm_estimate_amount", "otm_procurement_amount", "otm_progress", "create_date"], limit: 5000, order: "id desc",
+  }, co(s));
+
+export type UserRoles = { id: number; name: string; login: string; roles: string[] };
+export const usersRoles = (s: Session) => callKw<UserRoles[]>(s.sessionId, "crm.lead", "otm_users_roles", [], {}, co(s));
+export const setUserRole = (s: Session, uid: number, role: string, enabled: boolean) => callKw<boolean>(s.sessionId, "crm.lead", "otm_set_user_role", [uid, role, enabled], {}, co(s));

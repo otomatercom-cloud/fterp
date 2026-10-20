@@ -4,6 +4,7 @@ export type NavItem = { slug: string; label: string; icon: string; groups?: stri
 // Custom role groups (otm_*) will be added when the Odoo addon exists; base.group_system always passes.
 export const NAV: NavItem[] = [
   { slug: "dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+  { slug: "tasks", label: "My Tasks", icon: "ListChecks" },
   { slug: "crm", label: "CRM & Sales", icon: "Users", groups: ["sales_team.group_sale_salesman", "sales_team.group_sale_manager", "otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_procurement", "otm_ft_pipeline.group_ft_accounts"] },
   { slug: "design", label: "Design Studio", icon: "PenTool" },
   { slug: "boq", label: "Estimation & BOQ", icon: "Calculator" },
@@ -19,7 +20,7 @@ export const NAV: NavItem[] = [
   { slug: "intercompany", label: "Intercompany Orders", icon: "ArrowLeftRight", groups: ["purchase.group_purchase_manager", "sales_team.group_sale_manager"] },
   { slug: "portal", label: "Customer Portal", icon: "Globe" },
   { slug: "process-flow", label: "Process Flow", icon: "Workflow" },
-  { slug: "reports", label: "Reports", icon: "BarChart3" },
+  { slug: "reports", label: "Reports", icon: "BarChart3", groups: ["otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_accounts"] },
   { slug: "admin", label: "Settings", icon: "Settings" },
 ];
 

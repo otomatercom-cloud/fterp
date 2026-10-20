@@ -27,3 +27,13 @@ export async function removeDemoAction(): Promise<R> {
     return { ok: `${r.removed} demo leads removed.${r.invoices_kept ? ` ${r.invoices_kept} paid invoices were kept in Accounting.` : ""}` };
   } catch (e) { return fail(e); }
 }
+
+import { setUserRole } from "@/lib/odoo/leads";
+const ROLES = new Set(["sales_manager", "manager", "project_manager", "procurement", "accounts"]);
+export async function setUserRoleAction(userId: number, role: string, enabled: boolean): Promise<{ error?: string }> {
+  if (!Number.isInteger(userId) || userId <= 0 || !ROLES.has(role)) return { error: "Invalid request" };
+  const s = await requireSession();
+  try { await setUserRole(s, userId, role, enabled); } catch (e) { return fail(e); }
+  revalidatePath("/m/admin");
+  return {};
+}

@@ -356,6 +356,8 @@ class CrmLead(models.Model):
             if not name or qty <= 0 or price < 0:
                 raise UserError(self.env._("Each line needs an item, a quantity above 0 and a price of 0 or more."))
             vals.append((0, 0, {"name": name, "vendor": str(l.get("vendor", "")).strip()[:120], "qty": qty, "price": price}))
+        if self.otm_procurement_line_ids.filtered("purchase_id"):
+            raise UserError(self.env._("Purchase orders are already created from these prices. Cancel or delete them in Purchase before changing prices."))
         self.otm_procurement_line_ids.unlink()
         self.write({"otm_procurement_line_ids": vals})
         return self.otm_procurement_amount
@@ -386,3 +388,72 @@ class CrmLead(models.Model):
             raise UserError(self.env._("Add a short note about the work done."))
         self.env["otm.ft.site.update"].sudo().create({"lead_id": self.id, "percent": percent, "note": note, "user_id": self.env.user.id})
         return self.sudo().otm_progress
+
+    # ---- purchase orders from the collected prices (one draft PO per vendor) ----
+    def otm_po_data(self):
+        self.ensure_one()
+        lines = self.sudo().otm_procurement_line_ids
+        orders = lines.mapped("purchase_id")
+        return {
+            "pending": len(lines.filtered(lambda l: not l.purchase_id)),
+            "orders": [
+                {"id": o.id, "name": o.name, "vendor": o.partner_id.name, "state": o.state, "total": o.amount_total}
+                for o in orders
+            ],
+        }
+
+    def otm_create_purchase_orders(self):
+        self._otm_require(PROC, ("procurement",))
+        env = self.sudo().env  # role + stage verified above with the real user
+        lines = self.sudo().otm_procurement_line_ids.filtered(lambda l: not l.purchase_id)
+        if not lines:
+            raise UserError(self.env._("Save price lines first (or all lines already have purchase orders)."))
+        if any(not (l.vendor or "").strip() for l in lines):
+            raise UserError(self.env._("Enter a vendor on every line before creating purchase orders."))
+        Line = env["purchase.order.line"]
+        uom = env.ref("uom.product_uom_unit", raise_if_not_found=False)
+        uom_field = "product_uom_id" if "product_uom_id" in Line._fields else "product_uom"
+        tax_field = "tax_ids" if "tax_ids" in Line._fields else "taxes_id"
+        company = self.company_id or self.env.company
+        tax = company.account_purchase_tax_id
+        by_vendor = {}
+        for l in lines:
+            key = l.vendor.strip()
+            by_vendor[key] = by_vendor.get(key, lines.browse()) | l
+        for vendor, vlines in by_vendor.items():
+            partner = env["res.partner"].search([("name", "=ilike", vendor)], limit=1) or env["res.partner"].create({"name": vendor, "company_type": "company"})
+            order = env["purchase.order"].create({
+                "partner_id": partner.id, "origin": self.name, "company_id": company.id,
+                "order_line": [(0, 0, {
+                    "name": l.name, "product_qty": l.qty, "price_unit": l.price,
+                    **({uom_field: uom.id} if uom else {}),
+                    **({tax_field: [(6, 0, tax.ids)]} if tax else {}),
+                }) for l in vlines],
+            })
+            vlines.write({"purchase_id": order.id})
+        return len(by_vendor)
+
+    # ---- role management for administrators (used by the Settings screen) ----
+    @api.model
+    def otm_users_roles(self):
+        if not self.env.user.has_group("base.group_system"):
+            raise UserError(self.env._("Only an administrator can manage roles."))
+        users = self.env["res.users"].sudo().search([("share", "=", False), ("active", "=", True)], order="name")
+        groups = {role: self.env.ref(xmlid) for role, xmlid in ROLE_GROUPS.items()}
+        return [
+            {"id": u.id, "name": u.name, "login": u.login, "roles": [r for r, g in groups.items() if g.id in u.group_ids.ids]}
+            for u in users
+        ]
+
+    @api.model
+    def otm_set_user_role(self, user_id, role, enabled):
+        if not self.env.user.has_group("base.group_system"):
+            raise UserError(self.env._("Only an administrator can manage roles."))
+        xmlid = ROLE_GROUPS.get(role)
+        if not xmlid:
+            raise UserError(self.env._("Unknown role."))
+        user = self.env["res.users"].sudo().browse(int(user_id))
+        if not user.exists() or user.share:
+            raise UserError(self.env._("Select an internal user."))
+        user.write({"group_ids": [(4 if enabled else 3, self.env.ref(xmlid).id)]})
+        return True

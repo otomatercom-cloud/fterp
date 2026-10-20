@@ -6,7 +6,7 @@
     "author": "Otomater",
     "website": "https://otomater.com",
     "license": "OPL-1",
-    "depends": ["crm", "sale_crm", "account", "mail"],
+    "depends": ["crm", "sale_crm", "account", "purchase", "mail"],
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",
