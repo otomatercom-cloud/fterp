@@ -441,7 +441,11 @@ class CrmLead(models.Model):
 
     def otm_create_purchase_orders(self):
         self._otm_require(PROC, ("procurement",))
-        env = self.sudo().env  # role + stage verified above with the real user
+        return self._otm_make_pos()
+
+    def _otm_make_pos(self):
+        """Create purchase orders from the priced lines. Callers must have checked role and stage."""
+        env = self.sudo().env
         lines = self.sudo().otm_procurement_line_ids.filtered(lambda l: not l.purchase_id)
         if not lines:
             raise UserError(self.env._("Save price lines first (or all lines already have purchase orders)."))

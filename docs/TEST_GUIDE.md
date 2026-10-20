@@ -75,3 +75,9 @@ In Odoo (Developer mode) create 3 CRM opportunities with FT Source = **Meta** an
 6. Upload a new file (tagged r2) → Send for review → **Approve** → status *Approved*, "Approved by …".
 7. Add a type **Shop drawing** item the same way. It appears under **Shop Drawings**; other types under **Design Studio** (status counters on top).
 8. Negative: a Procurement/Accounts user cannot add items or approve; a non-PDF/image file renamed to .jpg is rejected.
+
+## Demo logins (Settings → Demo data → Load)
+Password for all: `Demo@2026`. Logins: `demo.sales1@ftdemo.com`, `demo.sales2@…`, `demo.manager@…`, `demo.pm1@…`, `demo.pm2@…`, `demo.procurement@…`, `demo.accounts@…`, and portal customers `demo.customer1@…` (work in progress), `customer2` (estimate sent), `customer3` (handover).
+Data: 32 leads across all stages with estimates, costing, design items (all statuses, with images), purchase orders, invoices/payments, tasks and snags, joinery, installations with before/after photos, site updates and history.
+Reload: Remove demo data, then Load again (internal demo users are archived and reactivated; portal users are deleted and recreated).
+Quick checks: sales1 vs sales2 see different leads; pm1 vs pm2 see different projects; customer1 sees only its own project; customer2 can approve the estimate; customer3 can confirm handover only when snags are closed.

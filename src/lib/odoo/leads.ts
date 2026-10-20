@@ -74,7 +74,7 @@ export async function companyCurrency(s: Session) {
 }
 
 export const demoStatus = (s: Session) => callKw<{ count: number }>(s.sessionId, "crm.lead", "otm_demo_status", [], {}, co(s));
-export const loadDemo = (s: Session) => callKw<{ created: number; invoices_skipped: number }>(s.sessionId, "crm.lead", "otm_load_demo_data", [], {}, co(s));
+export const loadDemo = (s: Session) => callKw<{ created: number; invoices_skipped: number; password: string }>(s.sessionId, "crm.lead", "otm_load_demo_data", [], {}, co(s));
 export const removeDemo = (s: Session) => callKw<{ removed: number; invoices_kept: number }>(s.sessionId, "crm.lead", "otm_remove_demo_data", [], {}, co(s));
 
 export type Project = { id: number; otm_stage: string; name: string; partner_name: string | false; otm_progress: number; otm_estimate_amount: number; otm_project_manager_id: [number, string] | false; create_date: string };

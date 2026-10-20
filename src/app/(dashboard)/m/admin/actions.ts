@@ -15,7 +15,7 @@ export async function loadDemoAction(): Promise<R> {
   try {
     const r = await loadDemo(s);
     revalidatePath("/", "layout");
-    return { ok: `${r.created} demo leads created.${r.invoices_skipped ? ` Invoices skipped for ${r.invoices_skipped} leads (accounting not fully configured).` : ""}` };
+    return { ok: `${r.created} demo leads created. Logins: demo.<role>@ftdemo.com, password ${r.password}.${r.invoices_skipped ? ` Invoices skipped for ${r.invoices_skipped} leads (accounting not fully configured).` : ""}` };
   } catch (e) { return fail(e); }
 }
 

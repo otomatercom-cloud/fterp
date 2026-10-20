@@ -1,4 +1,7 @@
+import base64
 import random
+import struct
+import zlib
 from datetime import timedelta
 
 from odoo import api, fields, models
@@ -55,6 +58,34 @@ PATH = [
 ]
 ORDER = ["new"] + [p[1] for p in PATH]
 EST_LINES = [("Living & dining joinery, wardrobes", 0.35), ("False ceiling & lighting", 0.2), ("Flooring & wall finishes", 0.25), ("Kitchen cabinetry & fittings", 0.2)]
+DEMO_PASS = "Demo@2026"
+DEMO_DOMAIN = "ftdemo.com"
+# (login prefix, display name, role)
+DEMO_USERS = [
+    ("sales1", "Demo Sales Manager 1", SM), ("sales2", "Demo Sales Manager 2", SM), ("manager", "Demo Manager", MGR),
+    ("pm1", "Demo Project Manager 1", PM), ("pm2", "Demo Project Manager 2", PM), ("procurement", "Demo Procurement", PROC), ("accounts", "Demo Accounts", ACC),
+]
+# portal customers: (login prefix, lead name whose customer they are)
+DEMO_CUSTOMERS = [
+    ("customer1", "Business Bay Office Fit-out"),  # work in progress: progress, snags
+    ("customer2", "Co-working Space Fit-out"),  # estimate sent: approve / request changes
+    ("customer3", "Downtown Cafe Interior"),  # handover: confirm handover
+]
+DESIGN_NAMES = [("Living room concept", "concept"), ("Colour & material mood board", "moodboard"), ("Master bedroom 3D render", "render_3d"), ("Floor plan & layout", "layout")]
+DESIGN_STATUS = ["approved", "in_review", "changes_requested", "draft"]
+
+
+def _png(rgb):
+    """A small valid PNG so demo thumbnails render and pass the magic-byte check."""
+    w = h = 64
+    raw = b"".join(b"\x00" + bytes(rgb) * w for _ in range(h))
+    def chunk(t, d):
+        c = struct.pack(">I", len(d)) + t + d
+        return c + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+
+
+PALETTE = [(107, 41, 59), (232, 191, 126), (217, 143, 160), (196, 138, 106), (90, 110, 120), (150, 130, 110)]
 VENDORS = ["Al Noor Timber Trading", "Gulf Gypsum LLC", "Stonehill Marble", "Lumina Lighting"]
 
 
@@ -79,6 +110,19 @@ class CrmLead(models.Model):
         return user or self.env.user
 
     @api.model
+    def _otm_demo_user(self, login, name, group_xmlids, partner=None):
+        """Create (or reactivate) a demo login with the shared demo password."""
+        Users = self.env["res.users"].sudo().with_context(active_test=False, no_reset_password=True)
+        groups = [self.env.ref(x).id for x in group_xmlids]
+        vals = {"name": name, "login": login, "email": login, "password": DEMO_PASS, "active": True}
+        user = Users.search([("login", "=", login)], limit=1)
+        if user:
+            user.write({**vals, "group_ids": [(6, 0, groups)]})
+            user.partner_id.active = True
+            return user
+        return Users.create({**vals, "group_ids": [(6, 0, groups)], **({"partner_id": partner.id} if partner else {})})
+
+    @api.model
     def otm_load_demo_data(self):
         """Create sample leads across every stage (admin only). Safe to run once; remove with otm_remove_demo_data."""
         self._otm_demo_admin_check()
@@ -87,8 +131,14 @@ class CrmLead(models.Model):
         env = self.with_context(tracking_disable=True, mail_create_nolog=True, mail_notrack=True).sudo().env
         Lead, Log = env["crm.lead"], env["otm.ft.stage.log"]
         tag = env["crm.tag"].create({"name": DEMO_TAG})
-        users = {r: self._otm_role_user(r) for r in ROLE_GROUPS}
-        sms = env["res.users"].search([("group_ids", "in", self.env.ref(ROLE_GROUPS[SM]).id), ("active", "=", True)], order="id") or users[SM]
+        base_user = "base.group_user"
+        du = {pre: self._otm_demo_user(f"demo.{pre}@{DEMO_DOMAIN}", nm, [base_user, ROLE_GROUPS[r]]) for pre, nm, r in DEMO_USERS}
+        users = {SM: du["sales1"], MGR: du["manager"], PM: du["pm1"], PROC: du["procurement"], ACC: du["accounts"]}
+        sms = [du["sales1"], du["sales2"]]
+        pms = [du["pm1"], du["pm2"]]
+        for v in VENDORS:  # tagged vendors so removal is clean
+            if not env["res.partner"].search([("name", "=", v)], limit=1):
+                env["res.partner"].create({"name": v, "company_type": "company", "ref": DEMO_REF})
         journal = env["account.journal"].search([("type", "in", ("bank", "cash"))], limit=1)
         rnd = random.Random(19)
         now = fields.Datetime.now()
@@ -104,7 +154,7 @@ class CrmLead(models.Model):
             if rank >= 1:
                 vals["user_id"] = sms[i % len(sms)].id
             if rank >= ORDER.index("pm_assigned"):
-                vals["otm_project_manager_id"] = users[PM].id
+                vals["otm_project_manager_id"] = pms[i % 2].id
             lead = Lead.create(vals)
             env.cr.execute("UPDATE crm_lead SET create_date=%s WHERE id=%s", [created, lead.id])
 
@@ -152,6 +202,25 @@ class CrmLead(models.Model):
                         skipped += 1
                         lead.otm_invoice_id = False
 
+            if rank >= ORDER.index("estimate_draft") and est:
+                items = DESIGN_NAMES[: 2 + i % 3] + ([("Kitchen shop drawing", "shop_drawing"), ("Wardrobe shop drawing", "shop_drawing")] if rank >= ORDER.index("pm_assigned") else [])
+                for k, (dn, dk) in enumerate(items):
+                    st = "approved" if rank >= ORDER.index("client_approved") else DESIGN_STATUS[(i + k) % 4]
+                    d = env["otm.ft.design"].create({
+                        "lead_id": lead.id, "name": dn, "kind": dk, "status": st, "revision": 2 if st == "changes_requested" else 1,
+                        "designer_id": users[SM].id, "due_date": (now + timedelta(days=5 + k)).date(), "note": "Client brief: warm, modern, maroon & gold accents.",
+                        "review_note": "Please revise the material palette and lighting layout." if st == "changes_requested" else False,
+                        "approved_by_id": users[MGR].id if st == "approved" else False, "approved_on": now if st == "approved" else False,
+                    })
+                    if st != "draft" or k % 2 == 0:
+                        env["ir.attachment"].create({"name": f"{dk}-{k + 1}.png", "description": "r1", "datas": base64.b64encode(_png(PALETTE[(i + k) % 6])), "mimetype": "image/png", "res_model": "otm.ft.design", "res_id": d.id})
+            if rank >= ORDER.index("procurement_approved") and lead.otm_procurement_line_ids:
+                try:
+                    with env.cr.savepoint():
+                        lead._otm_make_pos()
+                except Exception:  # purchase not fully configured: keep the lead, skip POs
+                    skipped += 1
+
             # history: one log row per step taken, spread from creation to now
             steps = [p for p in PATH if ORDER.index(p[1]) <= rank]
             if stage == "lost":
@@ -166,19 +235,26 @@ class CrmLead(models.Model):
                 done = rank > ORDER.index("work_started")
                 for nm, kd, stt in [("Site measurements and marking", "task", "done"), ("Electrical first fix", "task", "done"), ("Install joinery units", "task", "done" if done else "doing"),
                                     ("Paint touch-up in lobby", "snag", "done" if done else "todo"), ("Replace damaged skirting", "snag", "done" if done else "doing")]:
-                    env["otm.ft.task"].create({"lead_id": lead.id, "name": nm, "kind": kd, "status": stt, "due_date": (now + timedelta(days=7)).date(), "user_id": users[PM].id})
+                    env["otm.ft.task"].create({"lead_id": lead.id, "name": nm, "kind": kd, "status": stt, "due_date": (now + timedelta(days=7)).date(), "user_id": lead.otm_project_manager_id.id})
                 for k, (nm, q) in enumerate([("Wardrobe units", 4), ("Kitchen cabinets", 1), ("TV console & wall panel", 1), ("Vanity units", 3)]):
                     st = "installed" if done else ["installed", "ready", "finishing", "assembly"][k]
                     env["otm.ft.joinery"].create({"lead_id": lead.id, "name": nm, "qty": q, "stage": st, "due_date": (now + timedelta(days=10 + k * 3)).date()})
                 for nm, kd, stt, dd in [("Site visit and measurement", "site_visit", "done", -20), ("Joinery installation - phase 1", "installation", "done" if done else "in_progress", -5), ("Final installation and touch-up", "installation", "done" if done else "planned", 5)]:
-                    env["otm.ft.install"].create({"lead_id": lead.id, "name": nm, "kind": kd, "status": stt, "planned_date": (now + timedelta(days=dd)).date(), "team": "Crew A: Ravi, Suresh"})
+                    inst = env["otm.ft.install"].create({"lead_id": lead.id, "name": nm, "kind": kd, "status": stt, "planned_date": (now + timedelta(days=dd)).date(), "team": "Crew A: Ravi, Suresh"})
+                    if stt != "planned":
+                        for lab in ("before", "after") if stt == "done" else ("before",):
+                            env["ir.attachment"].create({"name": f"{lab}.png", "description": lab, "datas": base64.b64encode(_png(PALETTE[(i + len(lab)) % 6])), "mimetype": "image/png", "res_model": "otm.ft.install", "res_id": inst.id})
                 notes = ["Site mobilised, measurements verified", "Ceiling framing and electrical first fix done", "Joinery installation in progress", "Flooring and wall finishes completed", "Snagging and final touch-ups"]
                 final = 100 if (age > 200 or rank > ORDER.index("work_started")) else rnd.choice([35, 55, 70])
                 marks = [p for p in (15, 35, 55, 80, 100) if p <= final] or [final]
                 for k, pc in enumerate(marks):
                     when = created + timedelta(days=age * 0.5 + k * max(age * 0.1, 1))
-                    env["otm.ft.site.update"].create({"lead_id": lead.id, "percent": pc, "note": notes[k % 5], "user_id": users[PM].id, "date": min(when, now)})
-        return {"created": len(DEMO), "invoices_skipped": skipped}
+                    env["otm.ft.site.update"].create({"lead_id": lead.id, "percent": pc, "note": notes[k % 5], "user_id": lead.otm_project_manager_id.id, "date": min(when, now)})
+        for pre, lead_name in DEMO_CUSTOMERS:
+            lead = Lead.search([("name", "=", lead_name), ("tag_ids", "in", tag.ids)], limit=1)
+            if lead.partner_id:
+                self._otm_demo_user(f"demo.{pre}@{DEMO_DOMAIN}", lead.partner_id.name, ["base.group_portal"], partner=lead.partner_id)
+        return {"created": len(DEMO), "invoices_skipped": skipped, "password": DEMO_PASS}
 
     @api.model
     def otm_remove_demo_data(self):
@@ -188,6 +264,14 @@ class CrmLead(models.Model):
         leads = env["crm.lead"].search([("tag_ids", "in", tag.ids)]) if tag else env["crm.lead"]
         kept = 0
         for lead in leads:
+            for po in lead.otm_procurement_line_ids.purchase_id:
+                try:
+                    with env.cr.savepoint():
+                        if po.state != "cancel":
+                            po.button_cancel()
+                        po.unlink()
+                except Exception:
+                    kept += 1
             for inv in lead.otm_invoice_id:
                 try:
                     with env.cr.savepoint():
@@ -207,6 +291,21 @@ class CrmLead(models.Model):
                 leads.unlink()
         except Exception as e:
             raise UserError(self.env._("Could not remove some demo leads: %s", e))
-        env["res.partner"].search([("ref", "=", DEMO_REF)]).filtered(lambda p: not p.sale_order_ids and not p.invoice_ids).unlink()
+        for partner in env["res.partner"].with_context(active_test=False).search([("ref", "=", DEMO_REF)]):
+            try:
+                with env.cr.savepoint():
+                    partner.unlink()
+            except Exception:
+                pass  # still referenced (e.g. a paid invoice or PO was kept)
         tag.unlink()
+        # demo logins: portal ones are deleted; internal ones are archived (history references them) and reactivated on reload
+        for u in env["res.users"].with_context(active_test=False).search([("login", "=like", f"demo.%@{DEMO_DOMAIN}")]):
+            try:
+                with env.cr.savepoint():
+                    if u.share:
+                        u.unlink()
+                    else:
+                        u.write({"active": False})
+            except Exception:
+                u.write({"active": False, "login": f"{u.login}.old{u.id}"})
         return {"removed": removed, "invoices_kept": kept}
