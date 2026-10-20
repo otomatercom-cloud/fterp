@@ -249,3 +249,8 @@ export const remindMilestone = (s: Session, msId: number) => callKw<boolean>(s.s
 export const getNotifySettings = (s: Session) => callKw<NotifySettings>(s.sessionId, "crm.lead", "otm_notify_settings", [], {}, co(s));
 export const saveNotifySettings = (s: Session, email: boolean, url: string, token: string, meta: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_notify_save", [email, url, token, meta], {}, co(s));
 export const testNotify = (s: Session, phone: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_notify_test", [phone], {}, co(s));
+
+export type QueueItem = { id: number; name: string; customer: string; stage: string; note: string };
+export const getQueue = (s: Session, kind: "finance" | "design" | "site") => callKw<QueueItem[]>(s.sessionId, "crm.lead", "otm_work_queue", [kind], {}, co(s)).catch(() => [] as QueueItem[]);
+export type InstallRow = Install & { lead_id: number; project: string };
+export const getInstallAll = (s: Session) => callKw<InstallRow[]>(s.sessionId, "crm.lead", "otm_install_all", [], {}, co(s));

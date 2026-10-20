@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as Icons from "lucide-react";
+import { ThemeSwitcher } from "./theme-switcher";
 import { Menu, PanelLeftClose, PanelLeftOpen, LogOut, X, Bell, Search, CheckSquare, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction, switchCompanyAction } from "@/app/login/actions";
@@ -50,7 +51,7 @@ export function Shell({ items, userName, companies, companyId, taskCount = 0, no
   const [drawer, setDrawer] = useState(false);
   return (
     <div className="flex min-h-dvh">
-      <aside className={cn("sticky top-0 hidden h-dvh flex-col border-r border-line bg-sidebar backdrop-blur-xl transition-[width] md:flex", collapsed ? "w-16" : "w-64")}>
+      <aside className={cn("sticky top-0 hidden h-dvh shrink-0 self-start flex-col border-r border-line bg-sidebar backdrop-blur-xl transition-[width] md:flex", collapsed ? "w-16" : "w-64")}>
         <Logo collapsed={collapsed} />
         <NavList items={items} collapsed={collapsed} />
       </aside>
@@ -67,7 +68,7 @@ export function Shell({ items, userName, companies, companyId, taskCount = 0, no
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-sidebar px-3 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-topbar px-3 backdrop-blur-xl">
           <button aria-label="Open menu" className="grid size-10 place-items-center md:hidden" onClick={() => setDrawer(true)}><Menu className="size-5" /></button>
           <button aria-label="Toggle sidebar" className="hidden size-10 place-items-center md:grid" onClick={() => setCollapsed((c) => !c)}>
             {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
@@ -92,6 +93,7 @@ export function Shell({ items, userName, companies, companyId, taskCount = 0, no
             </Link>
             <Link href="/m/tasks" aria-label={`My tasks: ${taskCount} waiting`} title="My tasks" className="relative hidden size-10 place-items-center text-muted hover:text-ink sm:grid"><CheckSquare className="size-5" />{taskCount > 0 && <span className="absolute right-1 top-1 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white">{taskCount > 99 ? "99+" : taskCount}</span>}</Link>
             <button aria-label="Help (not yet implemented)" disabled className="hidden size-10 place-items-center text-muted sm:grid"><HelpCircle className="size-5" /></button>
+            <ThemeSwitcher />
             <span className="hidden max-w-32 truncate px-2 text-sm md:block">{userName}</span>
             <form action={logoutAction}><button aria-label="Log out" className="grid size-10 place-items-center text-muted hover:text-danger"><LogOut className="size-5" /></button></form>
           </div>

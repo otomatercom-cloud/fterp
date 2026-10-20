@@ -1,49 +1,89 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-primary: #8a3550;
-  --color-primary-dark: #6b293b;
-  --color-brand: #6b293b;
-  --color-sidebar: rgba(22, 9, 14, 0.82);
-  --color-rose: #d98fa0;
-  --color-gold: #e8bf7e;
-  --color-bronze: #c48a6a;
-  --color-tint: rgba(255, 255, 255, 0.06);
-  --color-bg: #140a0e;
-  --color-card: rgba(255, 255, 255, 0.05);
-  --color-ink: #f4ebe8;
-  --color-muted: #b5a3a8;
-  --color-line: rgba(217, 143, 160, 0.22);
-  --color-success: #3ecf8e;
-  --color-warning: #f0a43a;
-  --color-danger: #ef5b6b;
+  --color-primary: var(--c-primary);
+  --color-primary-dark: var(--c-primary-dark);
+  --color-brand: #6b293b; /* logo panel stays the brand maroon in every theme */
+  --color-sidebar: var(--c-sidebar);
+  --color-topbar: var(--c-topbar);
+  --color-rose: var(--c-rose);
+  --color-gold: var(--c-gold);
+  --color-bronze: var(--c-bronze);
+  --color-tint: var(--c-tint);
+  --color-bg: var(--c-bg);
+  --color-card: var(--c-card);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-line: var(--c-line);
+  --color-success: var(--c-success);
+  --color-warning: var(--c-warning);
+  --color-danger: var(--c-danger);
   --font-sans: ui-sans-serif, system-ui, "Inter", sans-serif;
 }
 
-html { color-scheme: dark; }
+/* Themes: set with data-theme on <html>. Default = maroon (dark). */
+:root, [data-theme="maroon"] {
+  --c-primary: #8a3550; --c-primary-dark: #6b293b; --c-sidebar: rgba(22, 9, 14, 0.82); --c-topbar: rgba(22, 9, 14, 0.82);
+  --c-rose: #d98fa0; --c-gold: #e8bf7e; --c-bronze: #c48a6a; --c-tint: rgba(255, 255, 255, 0.06);
+  --c-bg: #140a0e; --c-card: rgba(255, 255, 255, 0.05); --c-ink: #f4ebe8; --c-muted: #b5a3a8; --c-line: rgba(217, 143, 160, 0.22);
+  --c-success: #3ecf8e; --c-warning: #f0a43a; --c-danger: #ef5b6b;
+  --g1: rgba(255, 255, 255, 0.09); --g2: rgba(255, 255, 255, 0.025); --shadow: 0 8px 30px rgba(0, 0, 0, 0.35); --hi: rgba(255, 255, 255, 0.08);
+  --body-a: rgba(138, 53, 80, 0.45); --body-b: rgba(232, 191, 126, 0.12); --input-bg: rgba(255, 255, 255, 0.06); --opt-bg: #20111a; --track: rgba(255, 255, 255, 0.1);
+  color-scheme: dark;
+}
+[data-theme="ocean"] {
+  --c-primary: #2f6fa8; --c-primary-dark: #1f4f7c; --c-sidebar: rgba(8, 16, 28, 0.85); --c-topbar: rgba(8, 16, 28, 0.85);
+  --c-rose: #7fb2e0; --c-gold: #7fd1e8; --c-bronze: #8aa6c4; --c-tint: rgba(255, 255, 255, 0.06);
+  --c-bg: #0b1320; --c-card: rgba(255, 255, 255, 0.05); --c-ink: #e8f0f8; --c-muted: #9db0c4; --c-line: rgba(127, 178, 224, 0.25);
+  --c-success: #3ecf8e; --c-warning: #f0a43a; --c-danger: #ef5b6b;
+  --g1: rgba(255, 255, 255, 0.09); --g2: rgba(255, 255, 255, 0.025); --shadow: 0 8px 30px rgba(0, 0, 0, 0.4); --hi: rgba(255, 255, 255, 0.08);
+  --body-a: rgba(47, 111, 168, 0.45); --body-b: rgba(127, 209, 232, 0.12); --input-bg: rgba(255, 255, 255, 0.06); --opt-bg: #101c2e; --track: rgba(255, 255, 255, 0.1);
+  color-scheme: dark;
+}
+[data-theme="emerald"] {
+  --c-primary: #2f8a62; --c-primary-dark: #1f6246; --c-sidebar: rgba(8, 22, 16, 0.85); --c-topbar: rgba(8, 22, 16, 0.85);
+  --c-rose: #8fd4b0; --c-gold: #e3cf7a; --c-bronze: #a8c48a; --c-tint: rgba(255, 255, 255, 0.06);
+  --c-bg: #0a1510; --c-card: rgba(255, 255, 255, 0.05); --c-ink: #e8f4ee; --c-muted: #9db8aa; --c-line: rgba(143, 212, 176, 0.25);
+  --c-success: #3ecf8e; --c-warning: #f0a43a; --c-danger: #ef5b6b;
+  --g1: rgba(255, 255, 255, 0.09); --g2: rgba(255, 255, 255, 0.025); --shadow: 0 8px 30px rgba(0, 0, 0, 0.4); --hi: rgba(255, 255, 255, 0.08);
+  --body-a: rgba(47, 138, 98, 0.45); --body-b: rgba(227, 207, 122, 0.12); --input-bg: rgba(255, 255, 255, 0.06); --opt-bg: #11231a; --track: rgba(255, 255, 255, 0.1);
+  color-scheme: dark;
+}
+[data-theme="day"] {
+  --c-primary: #8a3550; --c-primary-dark: #6b293b; --c-sidebar: #3a1a26; --c-topbar: rgba(255, 255, 255, 0.85);
+  --c-rose: #b24a66; --c-gold: #a8702a; --c-bronze: #a0623f; --c-tint: rgba(138, 53, 80, 0.07);
+  --c-bg: #f6f0ed; --c-card: rgba(255, 255, 255, 0.8); --c-ink: #2a1a20; --c-muted: #6f5f65; --c-line: rgba(138, 53, 80, 0.22);
+  --c-success: #12875a; --c-warning: #b86f0a; --c-danger: #c8323f;
+  --g1: rgba(255, 255, 255, 0.95); --g2: rgba(255, 255, 255, 0.65); --shadow: 0 6px 22px rgba(80, 30, 45, 0.10); --hi: rgba(255, 255, 255, 0.9);
+  --body-a: rgba(138, 53, 80, 0.12); --body-b: rgba(232, 191, 126, 0.25); --input-bg: #ffffff; --opt-bg: #ffffff; --track: rgba(138, 53, 80, 0.12);
+  color-scheme: light;
+}
+
 body {
   color: var(--color-ink);
   background-color: var(--color-bg);
   background-image:
-    radial-gradient(900px 500px at 8% -5%, rgba(138, 53, 80, 0.45), transparent 60%),
-    radial-gradient(800px 500px at 100% 0%, rgba(232, 191, 126, 0.12), transparent 60%);
+    radial-gradient(900px 500px at 8% -5%, var(--body-a), transparent 60%),
+    radial-gradient(800px 500px at 100% 0%, var(--body-b), transparent 60%);
   background-attachment: fixed;
 }
 :focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
-html, body { overflow-x: hidden; }
+html, body { overflow-x: clip; }
 
 /* Glass surfaces */
 .bg-card, .glass {
-  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025));
+  background-image: linear-gradient(145deg, var(--g1), var(--g2));
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
-.glass { border: 1px solid var(--color-line); border-radius: 1rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.glass { border: 1px solid var(--color-line); border-radius: 1rem; box-shadow: var(--shadow), inset 0 1px 0 var(--hi); }
 .glow-gold { border-color: rgba(232, 191, 126, 0.55); box-shadow: 0 0 28px rgba(232, 191, 126, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
 .glow-rose { border-color: rgba(239, 91, 107, 0.55); box-shadow: 0 0 28px rgba(239, 91, 107, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
 .glow-bronze { border-color: rgba(196, 138, 106, 0.55); box-shadow: 0 0 28px rgba(196, 138, 106, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
 
 /* Form controls on dark glass */
-input, select, textarea { background-color: rgba(255, 255, 255, 0.06); color: var(--color-ink); }
+input, select, textarea { background-color: var(--input-bg); color: var(--color-ink); }
 input::placeholder, textarea::placeholder { color: var(--color-muted); }
-option { background-color: #20111a; color: #f4ebe8; }
+option { background-color: var(--opt-bg); color: var(--color-ink); }
+/* progress tracks / light fills adapt to the theme (sidebar keeps its own white tints) */
+.bg-white\/10 { background-color: var(--track); }

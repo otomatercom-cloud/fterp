@@ -33,12 +33,12 @@ export function AreaChart({ labels, series, height = 220 }: { labels: string[]; 
         const v = (top / 4) * g;
         return (
           <g key={g}>
-            <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="rgba(217,143,160,0.14)" />
-            <text x={L - 6} y={y(v) + 3} textAnchor="end" fontSize="10" fill="#b5a3a8">{Math.round(v)}</text>
+            <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="var(--color-line)" />
+            <text x={L - 6} y={y(v) + 3} textAnchor="end" fontSize="10" fill="var(--color-muted)">{Math.round(v)}</text>
           </g>
         );
       })}
-      {labels.map((l, i) => (i % 2 === 0 || labels.length < 8) && <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="#b5a3a8">{l}</text>)}
+      {labels.map((l, i) => (i % 2 === 0 || labels.length < 8) && <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="var(--color-muted)">{l}</text>)}
       {series.map((s, i) => {
         const pts = s.values.map((v, k) => ({ x: x(k), y: y(v) }));
         const line = smooth(pts);
@@ -60,7 +60,7 @@ export function Donut({ parts, size = 150 }: { parts: { label: string; value: nu
   let off = 0;
   return (
     <svg viewBox="0 0 140 140" width={size} height={size} role="img" aria-label="Leads by source">
-      <circle cx="70" cy="70" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="16" />
+      <circle cx="70" cy="70" r={r} fill="none" stroke="var(--track)" strokeWidth="16" />
       {total > 0 && parts.map((p, i) => {
         const len = (p.value / total) * c;
         const el = (
@@ -70,8 +70,8 @@ export function Donut({ parts, size = 150 }: { parts: { label: string; value: nu
         off += len;
         return el;
       })}
-      <text x="70" y="68" textAnchor="middle" fontSize="22" fontWeight="600" fill="#f4ebe8">{total}</text>
-      <text x="70" y="84" textAnchor="middle" fontSize="10" fill="#b5a3a8">leads</text>
+      <text x="70" y="68" textAnchor="middle" fontSize="22" fontWeight="600" fill="var(--color-ink)">{total}</text>
+      <text x="70" y="84" textAnchor="middle" fontSize="10" fill="var(--color-muted)">leads</text>
     </svg>
   );
 }

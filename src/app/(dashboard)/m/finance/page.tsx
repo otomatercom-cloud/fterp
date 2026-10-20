@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { NAV, canSee } from "@/lib/permissions/nav";
-import { companyCurrency, getFinance, type FinRow, type Overdue } from "@/lib/odoo/leads";
+import { WorkQueue } from "@/components/work-queue";
+import { companyCurrency, getFinance, getQueue, type FinRow, type Overdue } from "@/lib/odoo/leads";
 import { Donut, PillGauge } from "@/components/charts";
 import { STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
 
@@ -14,6 +15,7 @@ export default async function FinancePage() {
   if (!item || !canSee(item, s.groups)) notFound();
   let d: { rows: FinRow[]; overdue: Overdue[] } | null = null;
   try { d = await getFinance(s); } catch { /* shown below */ }
+  const queue = await getQueue(s, "finance");
   const cur = await companyCurrency(s).catch(() => "");
   if (!d) return <div className="space-y-3"><h1 className="text-xl font-semibold">Finance &amp; Accounts</h1><p className="glass p-4 text-sm">Finance data is not available. Check access and that the FT Pipeline module is upgraded.</p></div>;
   const sum = (k: keyof FinRow) => d.rows.reduce((a, r) => a + (r[k] as number), 0);
@@ -24,6 +26,7 @@ export default async function FinancePage() {
   return (
     <div className="space-y-4">
       <div><h1 className="text-xl font-semibold">Finance &amp; Accounts</h1><p className="text-sm text-muted">Receivables, payment follow-up and project profitability{cur ? ` · ${cur}` : ""}</p></div>
+      <WorkQueue title="Needs Accounts action" hint="Open the project to create the advance invoice or verify the payment." items={queue} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{kpi.map(([l, v, g]) => <div key={l} className={`glass p-4 ${g}`}><p className="text-xs text-muted">{l}</p><p className="mt-1 text-2xl font-semibold">{v}</p></div>)}</div>
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="glass p-5"><h2 className="mb-3 text-sm font-semibold">Collection</h2>
