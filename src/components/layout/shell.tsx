@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { logoutAction, switchCompanyAction } from "@/app/login/actions";
 
 type Item = { slug: string; label: string; icon: string };
-type Props = { items: Item[]; userName: string; companies: { id: number; name: string }[]; companyId: number; taskCount?: number; children: React.ReactNode };
+type Props = { items: Item[]; userName: string; companies: { id: number; name: string }[]; companyId: number; taskCount?: number; notifCount?: number; children: React.ReactNode };
 
 // Original logo file, unmodified. Its background matches the sidebar maroon.
 function Logo({ collapsed }: { collapsed: boolean }) {
@@ -45,7 +45,7 @@ function NavList({ items, collapsed, onNavigate }: { items: Item[]; collapsed: b
   );
 }
 
-export function Shell({ items, userName, companies, companyId, taskCount = 0, children }: Props) {
+export function Shell({ items, userName, companies, companyId, taskCount = 0, notifCount = 0, children }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
   return (
@@ -86,11 +86,11 @@ export function Shell({ items, userName, companies, companyId, taskCount = 0, ch
             <input aria-label="Global search (not yet implemented)" disabled placeholder="Search — coming soon" className="h-9 w-full rounded-md border border-line bg-bg pl-9 text-sm" />
           </div>
           <div className="ml-auto flex items-center gap-1">
-            <Link href="/m/tasks" aria-label={`My tasks: ${taskCount} waiting`} title="My tasks" className="relative grid size-10 place-items-center text-muted hover:text-ink">
+            <Link href="/m/notifications" aria-label={`Notifications: ${notifCount} unread`} title="Notifications" className="relative grid size-10 place-items-center text-muted hover:text-ink">
               <Bell className="size-5" />
-              {taskCount > 0 && <span className="absolute right-1 top-1 grid min-w-4 place-items-center rounded-full bg-gold px-1 text-[10px] font-semibold text-black">{taskCount > 99 ? "99+" : taskCount}</span>}
+              {notifCount > 0 && <span className="absolute right-1 top-1 grid min-w-4 place-items-center rounded-full bg-gold px-1 text-[10px] font-semibold text-black">{notifCount > 99 ? "99+" : notifCount}</span>}
             </Link>
-            <Link href="/m/tasks" aria-label="Pending approvals" className="hidden size-10 place-items-center text-muted hover:text-ink sm:grid"><CheckSquare className="size-5" /></Link>
+            <Link href="/m/tasks" aria-label={`My tasks: ${taskCount} waiting`} title="My tasks" className="relative hidden size-10 place-items-center text-muted hover:text-ink sm:grid"><CheckSquare className="size-5" />{taskCount > 0 && <span className="absolute right-1 top-1 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white">{taskCount > 99 ? "99+" : taskCount}</span>}</Link>
             <button aria-label="Help (not yet implemented)" disabled className="hidden size-10 place-items-center text-muted sm:grid"><HelpCircle className="size-5" /></button>
             <span className="hidden max-w-32 truncate px-2 text-sm md:block">{userName}</span>
             <form action={logoutAction}><button aria-label="Log out" className="grid size-10 place-items-center text-muted hover:text-danger"><LogOut className="size-5" /></button></form>

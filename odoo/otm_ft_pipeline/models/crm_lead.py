@@ -232,6 +232,7 @@ class CrmLead(models.Model):
             self.env["otm.ft.stage.log"].sudo().create(
                 {"lead_id": lead.id, "action": action, "from_stage": from_stage, "to_stage": to_stage, "user_id": self.env.user.id}
             )
+            lead._otm_after_transition(action, from_stage, to_stage)
         return True
 
     # ---- UI helpers (called by the Next.js app; every one re-checks role + stage) ----
@@ -769,6 +770,7 @@ class CrmLead(models.Model):
             if not self.env["ir.attachment"].sudo().search_count([("res_model", "=", "otm.ft.design"), ("res_id", "=", d.id)]):
                 raise UserError(self.env._("Upload at least one file before sending for review."))
             d.write({"status": "in_review"})
+            self._otm_notify(self._otm_hook_users("manager") - self.env.user, f"Design to review: {lead.name}", d.name or "", f"/m/crm/{lead.id}", "task", lead)
         elif action == "approve":
             if d.status != "in_review":
                 raise UserError(self.env._("Only an item in review can be approved."))

@@ -237,3 +237,15 @@ export const getPayroll = (s: Session, month: string) => callKw<{ can_generate: 
 export const generatePayroll = (s: Session, month: string) => callKw<number>(s.sessionId, "crm.lead", "otm_hr_payroll_generate", [month], {}, co(s));
 export const editPayslip = (s: Session, id: number, allowances: number, deductions: number, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_hr_payslip_edit", [id, allowances, deductions, note], {}, co(s));
 export const payslipAction = (s: Session, id: number, action: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_hr_payslip_action", [id, action], {}, co(s));
+
+export type Notif = { id: number; title: string; body: string; link: string; kind: "task" | "info" | "alert"; read: boolean; date: string };
+export type MsgLog = { id: number; channel: string; to: string; text: string; status: string; error: string; kind: string; lead: string; date: string };
+export type NotifySettings = { email: boolean; wa_url: string; has_token: boolean; has_meta_secret: boolean };
+export const getNotifications = (s: Session) => callKw<{ unread: number; items: Notif[] }>(s.sessionId, "crm.lead", "otm_notifications", [], {}, co(s));
+export const notifCount = (s: Session) => callKw<number>(s.sessionId, "crm.lead", "otm_notif_count", [], {}, co(s));
+export const readNotif = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_notif_read", [id], {}, co(s));
+export const getMsgLog = (s: Session) => callKw<MsgLog[]>(s.sessionId, "crm.lead", "otm_msg_log", [], {}, co(s));
+export const remindMilestone = (s: Session, msId: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_ms_remind", [msId], {}, co(s));
+export const getNotifySettings = (s: Session) => callKw<NotifySettings>(s.sessionId, "crm.lead", "otm_notify_settings", [], {}, co(s));
+export const saveNotifySettings = (s: Session, email: boolean, url: string, token: string, meta: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_notify_save", [email, url, token, meta], {}, co(s));
+export const testNotify = (s: Session, phone: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_notify_test", [phone], {}, co(s));

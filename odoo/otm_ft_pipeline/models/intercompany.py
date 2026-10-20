@@ -197,6 +197,13 @@ class CrmLeadIc(models.Model):
             o.write({"status": "received"})
         else:
             raise UserError(self.env._("Unknown action."))
+        try:
+            if action == "send":
+                self._otm_notify(self._otm_hook_users("manufacturing"), f"New factory order: {o.name}", lead.name or "", "/m/manufacturing", "task", lead)
+            elif action in ("accept", "reject", "dispatch"):
+                self._otm_notify((lead.otm_project_manager_id | lead.user_id), f"Factory order {o.name}: {action}", note or lead.name or "", f"/m/crm/{lead.id}", "info", lead)
+        except Exception:
+            pass
         lead.message_post(body=self.env._("Factory order %(n)s: %(a)s.", n=o.name, a=action.replace("_", " ")), author_id=self.env.user.partner_id.id)
         return True
 

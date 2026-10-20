@@ -10,6 +10,9 @@ LIMIT_PARAM = "otm_ft_pipeline.petty_limit"
 PETTY_ROLES = ("sales_manager", "manager", "project_manager", "procurement", "accounts")
 
 
+ACC_R, MGR_R = "accounts", "manager"
+
+
 class OtmFtPetty(models.Model):
     _name = "otm.ft.petty"
     _description = "FT Petty Cash Entry"
@@ -110,6 +113,7 @@ class CrmLeadPetty(models.Model):
             "holder_id": self.env.user.id, "lead_id": lead.id or False, "kind": "expense", "category": category, "amount": amount,
             "date": date or fields.Date.context_today(self), "description": str(description).strip()[:200],
         })
+        self._otm_notify(self._otm_hook_users(ACC_R, MGR_R) - self.env.user, f"Petty expense to review: {self.env.user.name}", f"{amount:g} · {str(description).strip()[:80]}", "/m/petty-cash", "task", lead or None)
         return t.id
 
     @api.model

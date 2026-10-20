@@ -24,3 +24,5 @@ access_otm_ft_employee_user,otm.ft.employee user,model_otm_ft_employee,base.grou
 access_otm_ft_attendance_user,otm.ft.attendance user,model_otm_ft_attendance,base.group_user,1,0,0,0
 access_otm_ft_leave_user,otm.ft.leave user,model_otm_ft_leave,base.group_user,1,0,0,0
 access_otm_ft_payslip_user,otm.ft.payslip user,model_otm_ft_payslip,base.group_user,1,0,0,0
+access_otm_ft_notification_user,otm.ft.notification user,model_otm_ft_notification,base.group_user,1,0,0,0
+access_otm_ft_msg_log_user,otm.ft.msg.log user,model_otm_ft_msg_log,base.group_user,1,0,0,0

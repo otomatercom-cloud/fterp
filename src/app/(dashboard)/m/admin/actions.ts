@@ -37,3 +37,17 @@ export async function setUserRoleAction(userId: number, role: string, enabled: b
   revalidatePath("/m/admin");
   return {};
 }
+
+import { saveNotifySettings, testNotify } from "@/lib/odoo/leads";
+export async function saveNotifyAction(fd: FormData): Promise<R> {
+  const url = String(fd.get("wa_url") ?? "").trim().slice(0, 300);
+  const token = String(fd.get("wa_token") ?? "").slice(0, 300);
+  const meta = String(fd.get("meta") ?? "").slice(0, 200);
+  const s = await requireSession();
+  try { await saveNotifySettings(s, fd.get("email") === "on", url, token, meta); revalidatePath("/m/admin"); return { ok: "Saved." }; } catch (e) { return fail(e); }
+}
+export async function testNotifyAction(phone: string): Promise<R> {
+  if (!/^[+\d][\d\s-]{7,20}$/.test(phone.trim())) return { error: "Enter a valid phone number." };
+  const s = await requireSession();
+  try { await testNotify(s, phone.trim()); return { ok: "Test message sent." }; } catch (e) { return fail(e); }
+}

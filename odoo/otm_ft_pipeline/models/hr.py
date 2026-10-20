@@ -247,6 +247,7 @@ class CrmLeadHr(models.Model):
         if Leave.search_count([("employee_id", "=", me.id), ("status", "!=", "rejected"), ("date_from", "<=", b), ("date_to", ">=", a)]):
             raise UserError(self.env._("You already have a leave request in this period."))
         Leave.create({"employee_id": me.id, "date_from": a, "date_to": b, "days": days, "reason": str(reason).strip()[:200]})
+        self._otm_notify(self._otm_hook_users("manager") - self.env.user, f"Leave request: {me.name}", f"{a} to {b} ({days:g} days)", "/m/hr", "task")
         return True
 
     @api.model

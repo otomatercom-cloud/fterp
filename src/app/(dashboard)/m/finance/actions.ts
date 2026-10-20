@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth/session";
 import { OdooError } from "@/lib/odoo/client";
-import { followupMilestone, invoiceMilestone, payMilestone, setMilestones } from "@/lib/odoo/leads";
+import { followupMilestone, invoiceMilestone, remindMilestone, payMilestone, setMilestones } from "@/lib/odoo/leads";
 
 type R = { error?: string };
 const fail = (e: unknown): R => {
@@ -40,4 +40,10 @@ export async function followupAction(leadId: number, msId: number, note: string)
   const s = await requireSession();
   try { await followupMilestone(s, p.data.a, p.data.b, p.data.n); } catch (e) { return fail(e); }
   return done();
+}
+
+export async function remindAction(msId: number): Promise<R> {
+  if (!z.number().int().positive().safeParse(msId).success) return { error: "Invalid request." };
+  const s = await requireSession();
+  try { await remindMilestone(s, msId); revalidatePath("/m", "layout"); return {}; } catch (e) { return fail(e); }
 }

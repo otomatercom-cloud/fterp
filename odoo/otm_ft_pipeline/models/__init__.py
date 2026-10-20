@@ -16,3 +16,4 @@ from . import procurement
 from . import intercompany
 from . import petty
 from . import hr
+from . import notify

@@ -392,6 +392,12 @@ class CrmLead(models.Model):
             lead = Lead.search([("name", "=", lead_name), ("tag_ids", "in", tag.ids)], limit=1)
             if lead.partner_id:
                 self._otm_demo_user(f"demo.{pre}@{DEMO_DOMAIN}", lead.partner_id.name, ["base.group_portal"], partner=lead.partner_id)
+        Note = env["otm.ft.notification"]
+        Note.search([("user_id", "in", [u.id for u in du.values()])]).unlink()
+        for pre, u in du.items():
+            Note.create([{"user_id": u.id, "title": "Welcome to FT ERP (demo)", "body": "Open a lead from My Tasks to try the workflow.", "link": "/m/tasks", "kind": "info"},
+                         {"user_id": u.id, "title": "Demo: action needed", "body": "Example of a task notification.", "link": "/m/tasks", "kind": "task"},
+                         {"user_id": u.id, "title": "Demo: overdue alert", "body": "Example of an alert notification.", "link": "/m/finance", "kind": "alert"}])
         return {"created": len(DEMO), "invoices_skipped": skipped, "password": DEMO_PASS}
 
     @api.model
@@ -438,6 +444,7 @@ class CrmLead(models.Model):
                 pass  # still referenced (e.g. a paid invoice or PO was kept)
         tag.unlink()
         env["otm.ft.employee"].with_context(active_test=False).search([("code", "=like", "DEMO-%")]).unlink()
+        env["otm.ft.notification"].search([("user_id.login", "=like", f"demo.%@{DEMO_DOMAIN}")]).unlink()
         env["otm.ft.petty"].search([("holder_id.login", "=like", f"demo.%@{DEMO_DOMAIN}")]).unlink()
         # demo logins: portal ones are deleted; internal ones are archived (history references them) and reactivated on reload
         for u in env["res.users"].with_context(active_test=False).search([("login", "=like", f"demo.%@{DEMO_DOMAIN}")]):

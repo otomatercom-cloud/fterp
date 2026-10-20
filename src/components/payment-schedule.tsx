@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { followupAction, invoiceMilestoneAction, payMilestoneAction, setMilestonesAction } from "@/app/(dashboard)/m/finance/actions";
+import { remindAction, followupAction, invoiceMilestoneAction, payMilestoneAction, setMilestonesAction } from "@/app/(dashboard)/m/finance/actions";
 import type { MilestoneData, MsKind } from "@/lib/odoo/leads";
 
 const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -65,6 +65,7 @@ export function PaymentSchedule({ leadId, data, journals, canPlan }: { leadId: n
                         <select aria-label="Journal" value={journal} onChange={(e) => setJournal(Number(e.target.value))} className="h-7 rounded border border-line px-1 text-xs">{journals.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}</select>
                         <button disabled={pending || !journal} onClick={() => run(() => payMilestoneAction(leadId, m.id, journal))} className="rounded bg-success/80 px-2 py-0.5 text-[11px] text-white disabled:opacity-50">Register payment</button>
                         <input aria-label="Follow-up note" value={note[m.id] ?? ""} onChange={(e) => setNote({ ...note, [m.id]: e.target.value })} placeholder="Follow-up note" className="h-7 min-w-0 flex-1 rounded border border-line px-2 text-xs" />
+                        <button disabled={pending} onClick={() => run(() => remindAction(m.id))} className="rounded border border-line px-2 py-0.5 text-[11px] text-muted disabled:opacity-50">Send WhatsApp reminder</button>
                         <button disabled={pending || !(note[m.id] ?? "").trim()} onClick={() => run(() => followupAction(leadId, m.id, note[m.id]))} className="rounded border border-gold/50 px-2 py-0.5 text-[11px] text-gold disabled:opacity-50">Log follow-up</button>
                       </>
                     )}
