@@ -23,7 +23,8 @@ export async function loginAction(_: LoginState, fd: FormData): Promise<LoginSta
     await createSession({ sessionId: o.sessionId, uid: o.uid, name: o.name, ...p });
   } catch (e) {
     if (e instanceof OdooError) return { error: e.code === "auth" ? "Invalid login or password" : e.code === "network" || e.code === "timeout" ? "Odoo is unreachable. Check ODOO_BASE_URL and try again." : "Sign-in failed. Contact your administrator." };
-    throw e;
+    console.error("[login] unexpected error:", e);
+    return { error: `Sign-in failed (${e instanceof Error ? e.message : "unknown"}). Check server logs.` };
   }
   redirect("/");
 }
