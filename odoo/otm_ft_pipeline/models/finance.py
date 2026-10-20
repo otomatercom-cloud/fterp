@@ -184,7 +184,8 @@ class CrmLeadFinance(models.Model):
             invoiced = sum(r["amount_total"] for r in billed if r["status"] != "draft")
             outstanding = sum(r["residual"] for r in ms)
             od = [r for r in ms if r["status"] == "overdue"]
-            cost = lead.otm_procurement_amount
+            petty = sum(self.env["otm.ft.petty"].sudo().search([("lead_id", "=", lead.id), ("kind", "=", "expense"), ("status", "=", "approved")]).mapped("amount"))
+            cost = lead.otm_procurement_amount + petty
             for r in od:
                 days = (fields.Date.context_today(self) - fields.Date.from_string(r["due"])).days if r["due"] else 0
                 overdue.append({"lead_id": lead.id, "lead": lead.name, "customer": lead.partner_name or lead.partner_id.name or "", "milestone_id": r["id"], "milestone": r["name"],

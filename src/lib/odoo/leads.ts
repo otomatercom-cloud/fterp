@@ -208,3 +208,14 @@ export const setIcLines = (s: Session, orderId: number, lines: { name: string; q
 export const importIcJoinery = (s: Session, orderId: number) => callKw<number>(s.sessionId, "crm.lead", "otm_ic_import_joinery", [orderId], {}, co(s));
 export const icAction = (s: Session, orderId: number, action: string, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_ic_action", [orderId, action, note], {}, co(s));
 export const moveIcLine = (s: Session, lineId: number, stage: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_ic_move_line", [lineId, stage], {}, co(s));
+
+// ---- petty cash ----
+export type PettyEntry = { id: number; kind: "topup" | "expense"; category: string; amount: number; date: string | false; description: string; status: "pending" | "approved" | "rejected"; holder: string; holder_id: number; lead_id: number | false; lead: string; reviewed_by: string; reject_reason: string; files: { id: number; name: string }[]; needs_manager?: boolean; own?: boolean };
+export type PettyData = { me: { id: number; name: string }; limit: number; balance: number; pending: number; can_review: boolean; can_topup: boolean; is_manager: boolean; mine: PettyEntry[]; approvals: PettyEntry[]; floats: { id: number; name: string; balance: number; pending: number }[]; leads: { id: number; name: string }[]; month: Record<string, number> };
+export const getPetty = (s: Session) => callKw<PettyData>(s.sessionId, "crm.lead", "otm_petty_overview", [], {}, co(s));
+export const addPetty = (s: Session, lead: number | false, category: string, amount: number, date: string, description: string) => callKw<number>(s.sessionId, "crm.lead", "otm_petty_add", [lead, category, amount, date, description], {}, co(s));
+export const addPettyFile = (s: Session, id: number, filename: string, b64: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_petty_file_add", [id, filename, b64], {}, co(s));
+export const cancelPetty = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_petty_cancel", [id], {}, co(s));
+export const getPettyFile = (s: Session, id: number) => callKw<{ mimetype: string; data: string }>(s.sessionId, "crm.lead", "otm_petty_file", [id], {}, co(s));
+export const topupPetty = (s: Session, userId: number, amount: number, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_petty_topup", [userId, amount, note], {}, co(s));
+export const reviewPetty = (s: Session, id: number, decision: string, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_petty_review", [id, decision, note], {}, co(s));

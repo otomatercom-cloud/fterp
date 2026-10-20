@@ -339,6 +339,23 @@ class CrmLead(models.Model):
                                 env["account.payment.register"].with_context(active_model="account.move", active_ids=move.ids).create({"journal_id": journal.id}).action_create_payments()
                     except Exception:
                         skipped += 1
+        work = Lead.search([("tag_ids", "in", tag.ids), ("otm_stage", "in", ["work_started", "handover", "completed"])])
+        today = fields.Date.context_today(self)
+        what = [("material", "Screws, anchors and adhesive"), ("transport", "Pickup for tile delivery"), ("labour", "Helper daily wage"), ("food", "Crew lunch at site"), ("tools", "Drill bits and blades"), ("fuel", "Van fuel"), ("other", "Parking and permits")]
+        for hi, holder in enumerate((du["pm1"], du["pm2"], du["sales1"], du["procurement"])):
+            env["otm.ft.petty"].create({"holder_id": holder.id, "kind": "topup", "amount": 3000, "description": "Opening float", "status": "approved", "reviewed_by": users[ACC].id, "reviewed_on": now, "date": today - timedelta(days=30)})
+            for n in range(6):
+                status = ["approved", "approved", "approved", "pending", "rejected", "approved"][n]
+                cat, desc = what[(hi + n) % len(what)]
+                t = env["otm.ft.petty"].create({
+                    "holder_id": holder.id, "lead_id": work[(hi + n) % len(work)].id if work and n != 5 else False, "kind": "expense", "category": cat, "amount": rnd.choice([40, 85, 120, 260, 380]),
+                    "date": today - timedelta(days=n * 3), "description": desc, "status": status,
+                    "reviewed_by": users[ACC].id if status != "pending" else False, "reviewed_on": now if status != "pending" else False,
+                    "reject_reason": "Receipt not readable" if status == "rejected" else False,
+                })
+                if n % 2 == 0:
+                    env["ir.attachment"].create({"name": "receipt.png", "datas": base64.b64encode(_png(PALETTE[(hi + n) % 6])), "mimetype": "image/png", "res_model": "otm.ft.petty", "res_id": t.id})
+        env["otm.ft.petty"].create({"holder_id": du["pm1"].id, "lead_id": work[0].id if work else False, "kind": "expense", "category": "material", "amount": 780, "date": today, "description": "Marine plywood, 12 sheets (above limit: Manager approval)", "status": "pending"})
         for pre, lead_name in DEMO_CUSTOMERS:
             lead = Lead.search([("name", "=", lead_name), ("tag_ids", "in", tag.ids)], limit=1)
             if lead.partner_id:
@@ -388,6 +405,7 @@ class CrmLead(models.Model):
             except Exception:
                 pass  # still referenced (e.g. a paid invoice or PO was kept)
         tag.unlink()
+        env["otm.ft.petty"].search([("holder_id.login", "=like", f"demo.%@{DEMO_DOMAIN}")]).unlink()
         # demo logins: portal ones are deleted; internal ones are archived (history references them) and reactivated on reload
         for u in env["res.users"].with_context(active_test=False).search([("login", "=like", f"demo.%@{DEMO_DOMAIN}")]):
             try:

@@ -116,3 +116,13 @@ Setup: the factory is a separate Odoo **company**. Demo load creates "FT Furnitu
 4. Change each item's stage with the dropdown. Order becomes *In production* when any item leaves Queued, and *Ready for dispatch* when all are Ready. **Dispatch to site** then marks it Dispatched.
 5. Back as `demo.pm1`: **Confirm received at site** → *Received at site*. Each step is logged in the project chatter.
 6. Overdue: needed-by date passed and not dispatched → red "Overdue". Negative checks: the factory user cannot create or edit orders or open project pages; `demo.pm2` cannot see pm1's orders; sales/accounts do not see the menus; PM cannot accept or move stages.
+
+## Scenario K — Petty Cash (floats, expenses with receipts, approval)
+1. Login `demo.accounts@ftdemo.com` → **Petty Cash** → *Cash floats*: balance and pending per holder. Enter an amount next to `Demo Project Manager 1` → **Top up** (balance rises at once).
+2. Login `demo.pm1@ftdemo.com` → **Petty Cash**: cards My balance / Pending / Available. *New expense*: category, project, date, amount, description → **Submit**. An amount above your *available* balance is refused.
+3. On the pending line click **+ receipt** and upload a JPG/PNG/PDF (≤5 MB); the "receipt" link opens it. **Withdraw** removes a pending expense.
+4. Login `demo.accounts` → *Approvals*: the pending expense → **Approve** (balance drops) or **Reject** with a reason (shown to the holder in red). You cannot review your own expense. Expenses above the limit (500 by default; system parameter `otm_ft_pipeline.petty_limit`) show "Manager approval needed" and only `demo.manager` can approve them.
+5. Approval is refused if the holder's balance is lower than the expense (top up first).
+6. *Spend this month by category* donut: holders see their own, Accounts/Manager see everyone's.
+7. Approved expenses linked to a project are added to its **cost** in Finance (profitability = estimate − procurement − petty cash).
+8. Negative: Procurement/PM/Sales cannot open the Approvals or Floats tabs or other people's receipts (`/api/petty-files/<id>` returns 403/404); customers and factory users have no menu.
