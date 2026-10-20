@@ -11,6 +11,7 @@ const LOGINS: [string, string, string][] = [
   ["demo.pm2" + D, "Project Manager", "Other projects (checks PM scoping)"],
   ["demo.procurement" + D, "Procurement", "Costing check, prices, purchase orders"],
   ["demo.accounts" + D, "Accounts", "Advance invoice, payment verification"],
+  ["demo.factory" + D, "Factory (Manufacturing)", "Accept orders, move production stages, dispatch (company: FT Furniture Factory)"],
   ["demo.customer1" + D, "Customer (portal)", "Business Bay Office: project progress, report snag"],
   ["demo.customer2" + D, "Customer (portal)", "Co-working Space: approve estimate / request changes"],
   ["demo.customer3" + D, "Customer (portal)", "Downtown Cafe: confirm handover"],

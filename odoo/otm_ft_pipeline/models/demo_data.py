@@ -58,12 +58,15 @@ PATH = [
 ]
 ORDER = ["new"] + [p[1] for p in PATH]
 EST_LINES = [("Living & dining joinery, wardrobes", 0.35), ("False ceiling & lighting", 0.2), ("Flooring & wall finishes", 0.25), ("Kitchen cabinetry & fittings", 0.2)]
+FACTORY_NAME = "FT Furniture Factory (Demo)"
+IC_FLOW = ["in_production", "ready", "sent", "draft", "accepted", "delivered", "received"]
 DEMO_PASS = "Demo@2026"
 DEMO_DOMAIN = "ftdemo.com"
 # (login prefix, display name, role)
 DEMO_USERS = [
     ("sales1", "Demo Sales Manager 1", SM), ("sales2", "Demo Sales Manager 2", SM), ("manager", "Demo Manager", MGR),
     ("pm1", "Demo Project Manager 1", PM), ("pm2", "Demo Project Manager 2", PM), ("procurement", "Demo Procurement", PROC), ("accounts", "Demo Accounts", ACC),
+    ("factory", "Demo Factory Manager", "manufacturing"),
 ]
 # portal customers: (login prefix, lead name whose customer they are)
 DEMO_CUSTOMERS = [
@@ -149,6 +152,8 @@ class CrmLead(models.Model):
         tag = env["crm.tag"].create({"name": DEMO_TAG})
         base_user = "base.group_user"
         du = {pre: self._otm_demo_user(f"demo.{pre}@{DEMO_DOMAIN}", nm, [base_user, ROLE_GROUPS[r]]) for pre, nm, r in DEMO_USERS}
+        factory = env["res.company"].with_context(active_test=False).search([("name", "=", FACTORY_NAME)], limit=1) or env["res.company"].create({"name": FACTORY_NAME})
+        du["factory"].write({"company_ids": [(6, 0, [factory.id])], "company_id": factory.id})
         users = {SM: du["sales1"], MGR: du["manager"], PM: du["pm1"], PROC: du["procurement"], ACC: du["accounts"]}
         sms = [du["sales1"], du["sales2"]]
         pms = [du["pm1"], du["pm2"]]
@@ -290,6 +295,26 @@ class CrmLead(models.Model):
                 for k, pc in enumerate(marks):
                     when = created + timedelta(days=age * 0.5 + k * max(age * 0.1, 1))
                     env["otm.ft.site.update"].create({"lead_id": lead.id, "percent": pc, "note": notes[k % 5], "user_id": lead.otm_project_manager_id.id, "date": min(when, now)})
+
+            if rank >= ORDER.index("pm_assigned") and est:
+                if rank >= ORDER.index("completed"):
+                    ic_status = "received"
+                elif rank >= ORDER.index("handover"):
+                    ic_status = "delivered"
+                elif rank >= ORDER.index("work_started"):
+                    ic_status = IC_FLOW[i % 5]
+                else:
+                    ic_status = "draft"
+                names = [(j.name, j.qty or 1.0) for j in lead.otm_joinery_ids] or [("Wardrobe units", 4.0), ("TV console & wall panel", 1.0), ("Vanity units", 3.0)]
+                today = fields.Date.context_today(lead)
+                order = env["otm.ft.ic.order"].create({
+                    "lead_id": lead.id, "supplier_company_id": factory.id, "status": ic_status, "created_by": lead.otm_project_manager_id.id or users[PM].id,
+                    "required_date": today + timedelta(days=-4 if (ic_status == "in_production" and i % 2) else 12), "note": "Please match the approved shop drawings and finish samples.",
+                    "line_ids": [(0, 0, {"name": nm, "qty": q, "unit_price": round(rnd.choice([450, 780, 1200, 2100]), 2),
+                                         "stage": "ready" if ic_status in ("ready", "delivered", "received") else (["cutting", "assembly", "finishing", "queued"][n % 4] if ic_status == "in_production" else "queued")}) for n, (nm, q) in enumerate(names)],
+                })
+                if ic_status == "rejected":
+                    order.reject_reason = "Capacity full this month"
 
             if rank >= ORDER.index("invoice_draft") and est:
                 untaxed_total = lead.order_ids.sorted("id")[-1:].amount_untaxed

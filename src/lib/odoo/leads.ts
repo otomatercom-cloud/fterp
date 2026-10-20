@@ -196,3 +196,15 @@ export const receivePo = (s: Session, id: number, lines: { line_id: number; qty:
 export type Vendor = { id: number; name: string; phone: string; email: string; orders: number; total: number; open: number };
 export const getVendors = (s: Session) => callKw<Vendor[]>(s.sessionId, "crm.lead", "otm_vendors", [], {}, co(s));
 export const addVendor = (s: Session, name: string, phone: string, email: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_vendor", [name, phone, email], {}, co(s));
+
+// ---- manufacturing (factory) & intercompany orders ----
+export type IcStage = "queued" | "cutting" | "assembly" | "finishing" | "qc" | "ready";
+export type IcLine = { id: number; name: string; qty: number; price: number; stage: IcStage };
+export type IcOrder = { id: number; name: string; lead_id: number; lead: string; customer: string; factory: string; status: string; required: string | false; note: string; reject_reason: string; total: number; by: string; overdue: boolean; lines: IcLine[]; can_edit: boolean; can_send: boolean; can_cancel: boolean; can_decide: boolean; can_move: boolean; can_dispatch: boolean; can_receive: boolean };
+export type IcData = { factory: boolean; can_create: boolean; leads: { id: number; name: string }[]; companies: { id: number; name: string }[]; orders: IcOrder[] };
+export const getIcOrders = (s: Session) => callKw<IcData>(s.sessionId, "crm.lead", "otm_ic_orders", [], {}, co(s));
+export const createIcOrder = (s: Session, leadId: number, companyId: number, required: string | false, note: string) => callKw<number>(s.sessionId, "crm.lead", "otm_ic_create", [leadId, companyId, required, note], {}, co(s));
+export const setIcLines = (s: Session, orderId: number, lines: { name: string; qty: number; price: number }[]) => callKw<boolean>(s.sessionId, "crm.lead", "otm_ic_set_lines", [orderId, lines], {}, co(s));
+export const importIcJoinery = (s: Session, orderId: number) => callKw<number>(s.sessionId, "crm.lead", "otm_ic_import_joinery", [orderId], {}, co(s));
+export const icAction = (s: Session, orderId: number, action: string, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_ic_action", [orderId, action, note], {}, co(s));
+export const moveIcLine = (s: Session, lineId: number, stage: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_ic_move_line", [lineId, stage], {}, co(s));

@@ -1,6 +1,6 @@
 // FT interior pipeline: Lead → Work start. Pure rules, no I/O.
 // Odoo stays the authority: the same rules must be enforced in the Odoo addon; this copy drives UI + tests.
-export type Role = "sales_manager" | "manager" | "project_manager" | "procurement" | "accounts" | "client";
+export type Role = "sales_manager" | "manager" | "project_manager" | "procurement" | "accounts" | "manufacturing" | "client";
 export type Source = "meta" | "walkin" | "other";
 
 export type Stage =

@@ -32,6 +32,7 @@ ROLE_GROUPS = {
     PM: "otm_ft_pipeline.group_ft_project_manager",
     PROC: "otm_ft_pipeline.group_ft_procurement",
     ACC: "otm_ft_pipeline.group_ft_accounts",
+    "manufacturing": "otm_ft_pipeline.group_ft_manufacturing",
 }
 
 # (from_stage, action) -> (to_stage, allowed roles). Mirrors src/lib/workflow/interior.ts in the Next.js app.

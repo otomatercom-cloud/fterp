@@ -107,3 +107,12 @@ Quick checks: sales1 vs sales2 see different leads; pm1 vs pm2 see different pro
 5. **Vendors** tab: add a vendor (name, phone, email); table shows orders, open orders and value per vendor.
 6. Login `demo.pm1@ftdemo.com` → Procurement shows only own projects' POs; can record goods received, cannot confirm/cancel/reschedule and has no Vendors tab. `demo.pm2` sees other projects. `demo.sales1`/accounts do not see the menu.
 7. Each receipt is also logged in the lead chatter ("Goods received on P000xx").
+
+## Scenario J — Manufacturing & Intercompany orders (furniture factory)
+Setup: the factory is a separate Odoo **company**. Demo load creates "FT Furniture Factory (Demo)" and the login `demo.factory@ftdemo.com` (role *Factory*, company = the factory only). In your own data: create the furniture company in Odoo, add it to Settings → Companies, and give factory users the role *Factory* (Settings → Pipeline roles) with that company.
+1. Login `demo.pm1@ftdemo.com` → **Intercompany Orders** → *New order*: choose a project (client approved … handover), factory company, needed-by date, note → **Create draft order**.
+2. Open the order → **Import joinery jobs** (copies the project's joinery items) or **+ Line**; set quantity and transfer price → **Save lines** → **Send to factory**. (Sending without lines fails.)
+3. Login `demo.factory@ftdemo.com` → **Manufacturing**: KPIs and the production board (Queued → Cutting → Assembly → Finishing → Quality check → Ready). Open the sent order → **Accept order** (or **Reject** with a reason).
+4. Change each item's stage with the dropdown. Order becomes *In production* when any item leaves Queued, and *Ready for dispatch* when all are Ready. **Dispatch to site** then marks it Dispatched.
+5. Back as `demo.pm1`: **Confirm received at site** → *Received at site*. Each step is logged in the project chatter.
+6. Overdue: needed-by date passed and not dispatched → red "Overdue". Negative checks: the factory user cannot create or edit orders or open project pages; `demo.pm2` cannot see pm1's orders; sales/accounts do not see the menus; PM cannot accept or move stages.

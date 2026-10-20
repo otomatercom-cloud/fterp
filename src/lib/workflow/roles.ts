@@ -6,9 +6,10 @@ export const ROLE_GROUP: Record<Exclude<Role, "client">, string> = {
   project_manager: "otm_ft_pipeline.group_ft_project_manager",
   procurement: "otm_ft_pipeline.group_ft_procurement",
   accounts: "otm_ft_pipeline.group_ft_accounts",
+  manufacturing: "otm_ft_pipeline.group_ft_manufacturing",
 };
 export const ROLE_LABEL: Record<keyof typeof ROLE_GROUP, string> = {
-  sales_manager: "Sales Manager", manager: "Manager", project_manager: "Project Manager", procurement: "Procurement", accounts: "Accounts",
+  sales_manager: "Sales Manager", manager: "Manager", project_manager: "Project Manager", procurement: "Procurement", accounts: "Accounts", manufacturing: "Factory",
 };
 
 export function rolesFromGroups(groups: string[]): (keyof typeof ROLE_GROUP)[] {

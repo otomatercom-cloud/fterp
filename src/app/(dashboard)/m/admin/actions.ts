@@ -29,7 +29,7 @@ export async function removeDemoAction(): Promise<R> {
 }
 
 import { setUserRole } from "@/lib/odoo/leads";
-const ROLES = new Set(["sales_manager", "manager", "project_manager", "procurement", "accounts"]);
+const ROLES = new Set(["sales_manager", "manager", "project_manager", "procurement", "accounts", "manufacturing"]);
 export async function setUserRoleAction(userId: number, role: string, enabled: boolean): Promise<{ error?: string }> {
   if (!Number.isInteger(userId) || userId <= 0 || !ROLES.has(role)) return { error: "Invalid request" };
   const s = await requireSession();
