@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/auth/session";
 import { OdooError } from "@/lib/odoo/client";
 import { portalDetail, type PortalDetail } from "@/lib/odoo/leads";
 import { PORTAL_STAGE } from "@/lib/portal-labels";
+import { Photos } from "@/components/install-panel";
 import { PortalActions } from "@/components/portal-actions";
 
 const f = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -23,7 +24,7 @@ export default async function PortalProject({ params }: { params: Promise<{ id: 
     <div className="space-y-4">
       <Link href="/m/portal" className="text-sm text-muted hover:underline">← My Projects</Link>
       <div><h1 className="text-xl font-semibold">{d.name}</h1><p className="text-sm text-gold">{PORTAL_STAGE[d.stage] ?? d.stage}</p></div>
-      {(d.can_approve || d.can_signoff) && <section className="glass p-5"><h2 className="mb-3 text-sm font-semibold">Your action</h2><PortalActions leadId={d.id} canApprove={d.can_approve} canSignoff={d.can_signoff} /></section>}
+      {(d.can_approve || d.can_signoff || d.can_raise_snag) && <section className="glass p-5"><h2 className="mb-3 text-sm font-semibold">Your action</h2><PortalActions leadId={d.id} canApprove={d.can_approve} canSignoff={d.can_signoff} canRaiseSnag={d.can_raise_snag} /></section>}
       {e.lines.length > 0 && (
         <section className="glass overflow-x-auto p-5">
           <h2 className="mb-3 text-sm font-semibold">Estimate {e.order || ""}</h2>
@@ -42,6 +43,19 @@ export default async function PortalProject({ params }: { params: Promise<{ id: 
           <p><b>{inv.name}</b> · total {f(inv.total)} · balance due {f(inv.residual)} · {inv.payment_state.replace("_", " ")}</p>
           {inv.state === "posted" && <p className="mt-1"><a className="text-gold underline" target="_blank" rel="noreferrer" href={`/api/leads/${d.id}/invoice-pdf`}>Download invoice (PDF)</a></p>}
           {inv.residual > 0 && inv.state === "posted" && <p className="mt-2 text-xs text-muted">Please pay by bank transfer and share the receipt with your Sales contact; we verify the payment and start work.</p>}
+        </section>
+      )}
+      {d.snags.length > 0 && (
+        <section className="glass p-5 text-sm">
+          <h2 className="mb-2 font-semibold">Issues (snag list)</h2>
+          <ul className="space-y-1">{d.snags.map((x) => <li key={x.id} className="flex justify-between gap-2"><span>{x.name}</span><span className={x.status === "done" ? "text-success" : "text-warning"}>{x.status === "done" ? "Fixed" : "Open"}</span></li>)}</ul>
+          <p className="mt-2 text-xs text-muted">Handover can be confirmed once all issues are fixed.</p>
+        </section>
+      )}
+      {d.installs.length > 0 && (
+        <section className="glass p-5 text-sm">
+          <h2 className="mb-2 font-semibold">Site visits &amp; installation</h2>
+          <ul className="divide-y divide-line">{d.installs.map((i) => <li key={i.id} className="py-2"><b>{i.name}</b> <span className="text-xs text-muted">· {i.date || "date to be confirmed"} · {i.status.replace("_", " ")}</span><Photos photos={i.photos} /></li>)}</ul>
         </section>
       )}
       {["work_started", "handover", "completed"].includes(d.stage) && (

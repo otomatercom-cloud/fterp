@@ -39,3 +39,21 @@ export async function setTaskStatusAction(leadId: number, taskId: number, status
   revalidatePath("/m/projects", "layout");
   return {};
 }
+
+import { addInstall, setInstallStatus } from "@/lib/odoo/leads";
+export async function addInstallAction(leadId: number, name: string, kind: string, date: string, team: string): Promise<{ error?: string }> {
+  const p = z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200), kind: z.enum(["site_visit", "installation"]), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal("")), team: z.string().trim().max(200) }).safeParse({ id: leadId, name, kind, date, team });
+  if (!p.success) return { error: "Enter a name and a valid date if set." };
+  const s = await requireSession();
+  try { await addInstall(s, p.data.id, p.data.name, p.data.kind, p.data.date || false, p.data.team); } catch (e) { return fail(e); }
+  revalidatePath("/m/projects", "layout");
+  return {};
+}
+export async function setInstallStatusAction(installId: number, status: string): Promise<{ error?: string }> {
+  const p = z.object({ id: z.number().int().positive(), st: z.enum(["planned", "in_progress", "done"]) }).safeParse({ id: installId, st: status });
+  if (!p.success) return { error: "Invalid request" };
+  const s = await requireSession();
+  try { await setInstallStatus(s, p.data.id, p.data.st); } catch (e) { return fail(e); }
+  revalidatePath("/m/projects", "layout");
+  return {};
+}

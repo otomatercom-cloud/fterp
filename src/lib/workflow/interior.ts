@@ -5,7 +5,7 @@ export type Source = "meta" | "walkin" | "other";
 
 export type Stage =
   | "new" | "assigned"
-  | "estimate_draft" | "estimate_manager_review" | "estimate_approved" | "sent_to_client"
+  | "estimate_draft" | "procurement_check" | "estimate_manager_review" | "estimate_approved" | "sent_to_client"
   | "client_approved" | "pm_assigned"
   | "procurement" | "procurement_approved"
   | "invoice_draft" | "invoice_with_sales" | "awaiting_advance" | "payment_verification"
@@ -16,7 +16,9 @@ export type Transition = { from: Stage; action: string; to: Stage; by: Role[] };
 export const TRANSITIONS: Transition[] = [
   { from: "new", action: "assign", to: "assigned", by: ["manager"] }, // meta: auto round-robin (system); walk-in: creator; other: manager
   { from: "assigned", action: "create_estimate", to: "estimate_draft", by: ["sales_manager"] },
-  { from: "estimate_draft", action: "submit_to_manager", to: "estimate_manager_review", by: ["sales_manager"] },
+  { from: "estimate_draft", action: "submit_to_procurement", to: "procurement_check", by: ["sales_manager"] }, // Procurement checks availability + costing first
+  { from: "procurement_check", action: "confirm_costing", to: "estimate_manager_review", by: ["procurement"] },
+  { from: "procurement_check", action: "return_to_sales", to: "estimate_draft", by: ["procurement"] }, // e.g. item not available
   { from: "estimate_manager_review", action: "approve", to: "estimate_approved", by: ["manager"] },
   { from: "estimate_manager_review", action: "reject", to: "estimate_draft", by: ["manager"] },
   { from: "estimate_approved", action: "send_to_client", to: "sent_to_client", by: ["sales_manager"] },
@@ -63,14 +65,14 @@ export function procurementCheck(quoted: number, estimated: number): "ok" | "nee
 }
 
 export const STAGE_LABELS: Record<Stage, string> = {
-  new: "New", assigned: "Assigned", estimate_draft: "Estimate draft", estimate_manager_review: "Manager review",
+  new: "New", assigned: "Assigned", estimate_draft: "Estimate draft", procurement_check: "Procurement check", estimate_manager_review: "Manager review",
   estimate_approved: "Estimate approved", sent_to_client: "Sent to client", client_approved: "Client approved",
   pm_assigned: "PM assigned", procurement: "Procurement", procurement_approved: "Procurement approved",
   invoice_draft: "Invoice draft", invoice_with_sales: "Invoice with sales", awaiting_advance: "Awaiting advance",
   payment_verification: "Payment verification", work_started: "Work started", handover: "Handover", completed: "Completed", lost: "Lost",
 };
 export const ACTION_LABELS: Record<string, string> = {
-  assign: "Assign lead", create_estimate: "Create estimate", submit_to_manager: "Submit to manager", approve: "Approve estimate",
+  assign: "Assign lead", create_estimate: "Create estimate", submit_to_procurement: "Send to procurement for costing", confirm_costing: "Confirm availability & costing", return_to_sales: "Return to sales", approve: "Approve estimate",
   reject: "Reject", send_to_client: "Send to client", client_approve: "Client approved", client_requests_changes: "Client wants changes",
   mark_lost: "Mark lost", assign_project_manager: "Assign PM", send_to_procurement: "Send to procurement", approve_prices: "Approve prices",
   start_invoice: "Start invoice", send_to_sales: "Send to sales", record_payment: "Record advance", verify_payment: "Verify payment", complete_work: "Complete work (handover)", confirm_handover: "Confirm client handover",

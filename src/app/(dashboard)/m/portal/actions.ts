@@ -28,3 +28,13 @@ export async function createPortalUserAction(leadId: number, login: string, pass
   revalidatePath("/m/crm", "layout");
   return {};
 }
+
+import { raiseSnag } from "@/lib/odoo/leads";
+export async function raiseSnagAction(leadId: number, name: string): Promise<R> {
+  const p = z.object({ id: z.number().int().positive(), name: z.string().trim().min(1).max(200) }).safeParse({ id: leadId, name });
+  if (!p.success) return { error: "Describe the issue (up to 200 characters)." };
+  const s = await requireSession();
+  try { await raiseSnag(s, p.data.id, p.data.name); } catch (e) { return fail(e); }
+  revalidatePath("/m/portal", "layout");
+  return {};
+}

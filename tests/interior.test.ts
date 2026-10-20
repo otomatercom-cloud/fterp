@@ -13,6 +13,13 @@ test("assignment rules per source", () => {
   assert.equal(assignmentRule("walkin"), "creator");
   assert.equal(assignmentRule("other"), "manager_assigns");
 });
+test("procurement must confirm availability and costing before manager review", () => {
+  assert.equal(transition("estimate_draft", "submit_to_procurement", ["sales_manager"]), "procurement_check");
+  assert.equal(transition("procurement_check", "confirm_costing", ["procurement"]), "estimate_manager_review");
+  assert.equal(transition("procurement_check", "return_to_sales", ["procurement"]), "estimate_draft");
+  assert.throws(() => transition("procurement_check", "confirm_costing", ["sales_manager"]));
+  assert.throws(() => transition("estimate_draft", "approve", ["manager"]));
+});
 test("estimate needs manager approval before client", () => {
   assert.throws(() => transition("estimate_draft", "send_to_client", ["sales_manager"]));
   assert.equal(transition("estimate_manager_review", "approve", ["manager"]), "estimate_approved");

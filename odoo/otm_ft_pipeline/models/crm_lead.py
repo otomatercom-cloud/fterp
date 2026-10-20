@@ -5,6 +5,7 @@ STAGES = [
     ("new", "New"),
     ("assigned", "Assigned"),
     ("estimate_draft", "Estimate Draft"),
+    ("procurement_check", "Procurement - Availability & Costing"),
     ("estimate_manager_review", "Estimate - Manager Review"),
     ("estimate_approved", "Estimate Approved"),
     ("sent_to_client", "Sent to Client"),
@@ -35,7 +36,9 @@ ROLE_GROUPS = {
 TRANSITIONS = {
     ("new", "assign"): ("assigned", [MGR]),
     ("assigned", "create_estimate"): ("estimate_draft", [SM]),
-    ("estimate_draft", "submit_to_manager"): ("estimate_manager_review", [SM]),
+    ("estimate_draft", "submit_to_procurement"): ("procurement_check", [SM]),
+    ("procurement_check", "confirm_costing"): ("estimate_manager_review", [PROC]),
+    ("procurement_check", "return_to_sales"): ("estimate_draft", [PROC]),
     ("estimate_manager_review", "approve"): ("estimate_approved", [MGR]),
     ("estimate_manager_review", "reject"): ("estimate_draft", [MGR]),
     ("estimate_approved", "send_to_client"): ("sent_to_client", [SM]),
@@ -73,9 +76,12 @@ class CrmLead(models.Model):
     )
     otm_advance_amount = fields.Monetary(string="Advance Received", currency_field="company_currency", tracking=True, copy=False)
     otm_invoice_id = fields.Many2one("account.move", string="Advance Invoice", copy=False, readonly=True)
+    otm_costing_line_ids = fields.One2many("otm.ft.costing.line", "lead_id", string="Costing Lines", copy=False)
+    otm_costing_amount = fields.Monetary(string="Confirmed Cost", currency_field="company_currency", compute="_compute_otm_costing", store=True, copy=False)
     otm_log_ids = fields.One2many("otm.ft.stage.log", "lead_id", string="Stage History")
     otm_task_ids = fields.One2many("otm.ft.task", "lead_id", string="Tasks & Snags", copy=False)
     otm_joinery_ids = fields.One2many("otm.ft.joinery", "lead_id", string="Joinery Jobs", copy=False)
+    otm_install_ids = fields.One2many("otm.ft.install", "lead_id", string="Site Visits & Installations", copy=False)
     otm_site_update_ids = fields.One2many("otm.ft.site.update", "lead_id", string="Site Updates", copy=False)
     otm_progress = fields.Integer(string="Site Progress %", compute="_compute_otm_progress", store=True, copy=False)
 
@@ -83,6 +89,11 @@ class CrmLead(models.Model):
     def _compute_otm_progress(self):
         for lead in self:
             lead.otm_progress = max(lead.otm_site_update_ids.mapped("percent"), default=0)
+
+    @api.depends("otm_costing_line_ids.cost")
+    def _compute_otm_costing(self):
+        for lead in self:
+            lead.otm_costing_amount = sum(lead.otm_costing_line_ids.mapped("cost"))
 
     @api.depends("otm_procurement_line_ids.subtotal")
     def _compute_otm_procurement_amount(self):
@@ -139,8 +150,17 @@ class CrmLead(models.Model):
         self.ensure_one()
         if action == "assign" and not self.user_id:
             raise UserError(self.env._("Select the Salesperson (Sales Manager) before assigning."))
-        if action == "submit_to_manager" and not self.order_ids:
+        if action == "submit_to_procurement" and not self.order_ids:
             raise UserError(self.env._("Create at least one quotation (estimate) before submitting."))
+        if action == "confirm_costing":
+            lines = self.sudo().otm_costing_line_ids
+            if not lines:
+                raise UserError(self.env._("There are no estimate lines to cost."))
+            for l in lines:
+                if not l.availability or l.unit_cost <= 0:
+                    raise UserError(self.env._("Set availability and a unit cost for: %s", l.name))
+                if l.availability == "unavailable":
+                    raise UserError(self.env._("'%s' is not available. Return the estimate to Sales to change it.", l.name))
         if action == "assign_project_manager" and not self.otm_project_manager_id:
             raise UserError(self.env._("Select a Project Manager first."))
         if action == "send_to_procurement" and not (
@@ -161,6 +181,10 @@ class CrmLead(models.Model):
                 raise UserError(self.env._("The invoice has no registered payment in Accounting yet."))
             if abs(inv.amount_total - self.otm_advance_amount) > 0.01:
                 raise UserError(self.env._("Advance recorded (%(a)s) differs from the invoice (%(b)s).", a=self.otm_advance_amount, b=inv.amount_total))
+        if action == "confirm_handover":
+            open_snags = self.sudo().otm_task_ids.filtered(lambda t: t.kind == "snag" and t.status != "done")
+            if open_snags:
+                raise UserError(self.env._("Close all snags raised by the client first (%s open).", len(open_snags)))
         if action == "complete_work":
             open_snags = self.sudo().otm_task_ids.filtered(lambda t: t.kind == "snag" and t.status != "done")
             if open_snags:
@@ -187,11 +211,15 @@ class CrmLead(models.Model):
                 raise UserError(self.env._("You are not allowed to perform this step."))
             lead._otm_guard(action)
             vals = {"otm_stage": to_stage}
-            if action == "submit_to_manager":
+            if action == "submit_to_procurement":
                 latest = lead.order_ids.sorted("id")[-1:]
                 vals["otm_estimate_amount"] = latest.amount_untaxed  # pre-tax: comparable with procurement costs
             from_stage = lead.otm_stage
             lead.sudo().write(vals)  # role verified above with the real user
+            if action == "submit_to_procurement":
+                lead._otm_sync_costing_lines()
+            if action == "send_to_procurement" and not lead.sudo().otm_procurement_line_ids:
+                lead._otm_costing_to_procurement()
             self.env["otm.ft.stage.log"].sudo().create(
                 {"lead_id": lead.id, "action": action, "from_stage": from_stage, "to_stage": to_stage, "user_id": self.env.user.id}
             )
@@ -543,4 +571,145 @@ class CrmLead(models.Model):
         if stage not in dict(self.env["otm.ft.joinery"]._fields["stage"].selection):
             raise UserError(self.env._("Invalid stage."))
         job.write({"stage": stage})
+        return True
+
+    # ---- installation: site visits, schedule, crew, before/after photos ----
+    PHOTO_MIMES = ("image/jpeg", "image/png", "image/webp")
+
+    def _otm_install_dict(self, i):
+        atts = self.env["ir.attachment"].sudo().search([("res_model", "=", "otm.ft.install"), ("res_id", "=", i.id)], order="id")
+        return {
+            "id": i.id, "name": i.name, "kind": i.kind, "status": i.status, "team": i.team or "",
+            "date": fields.Date.to_string(i.planned_date) if i.planned_date else False,
+            "photos": [{"id": a.id, "label": a.description or "photo", "name": a.name} for a in atts],
+        }
+
+    def otm_installs(self):
+        self.ensure_one()
+        return [self._otm_install_dict(i) for i in self.sudo().otm_install_ids]
+
+    def otm_add_install(self, name, kind, date=False, team=""):
+        self.ensure_one()
+        if not self._otm_can_manage_project():
+            raise UserError(self.env._("Only the assigned Project Manager can manage installation."))
+        if self.otm_stage not in ("work_started", "handover"):
+            raise UserError(self.env._("Visits can be planned while the project is in progress."))
+        name = str(name or "").strip()[:200]
+        if not name or kind not in ("site_visit", "installation"):
+            raise UserError(self.env._("Enter a name for the visit or installation."))
+        self.env["otm.ft.install"].sudo().create({"lead_id": self.id, "name": name, "kind": kind, "planned_date": date or False, "team": str(team or "").strip()[:200]})
+        return True
+
+    @api.model
+    def _otm_install_for_manager(self, install_id):
+        inst = self.env["otm.ft.install"].sudo().browse(int(install_id))
+        if not inst.exists():
+            raise UserError(self.env._("Not found."))
+        lead = self.browse(inst.lead_id.id)
+        lead.check_access("read")
+        if not lead._otm_can_manage_project():
+            raise UserError(self.env._("Only the assigned Project Manager can manage installation."))
+        return inst
+
+    @api.model
+    def otm_set_install_status(self, install_id, status):
+        inst = self._otm_install_for_manager(install_id)
+        if status not in ("planned", "in_progress", "done"):
+            raise UserError(self.env._("Invalid status."))
+        inst.write({"status": status})
+        return True
+
+    @api.model
+    def otm_add_photo(self, install_id, label, filename, data_b64):
+        inst = self._otm_install_for_manager(install_id)
+        if label not in ("before", "after"):
+            raise UserError(self.env._("Photo type must be before or after."))
+        import base64
+        raw = base64.b64decode(data_b64 or "", validate=True)
+        if not raw or len(raw) > 5 * 1024 * 1024:
+            raise UserError(self.env._("Photo must be an image up to 5 MB."))
+        if raw[:3] == b"\xff\xd8\xff":
+            mime = "image/jpeg"
+        elif raw[:8] == b"\x89PNG\r\n\x1a\n":
+            mime = "image/png"
+        elif raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+            mime = "image/webp"
+        else:
+            raise UserError(self.env._("Only JPEG, PNG or WebP images are allowed."))
+        if self.env["ir.attachment"].sudo().search_count([("res_model", "=", "otm.ft.install"), ("res_id", "=", inst.id)]) >= 20:
+            raise UserError(self.env._("Maximum 20 photos per visit."))
+        self.env["ir.attachment"].sudo().create({
+            "name": (str(filename or "photo").replace("/", "_").replace("\\", "_"))[:100], "description": label, "datas": data_b64,
+            "mimetype": mime, "res_model": "otm.ft.install", "res_id": inst.id,
+        })
+        return True
+
+    @api.model
+    def otm_photo(self, att_id):
+        """Image bytes (base64) of an installation photo, only for users who can see the project."""
+        att = self.env["ir.attachment"].sudo().browse(int(att_id))
+        if not att.exists() or att.res_model != "otm.ft.install" or att.mimetype not in self.PHOTO_MIMES:
+            raise UserError(self.env._("Photo not found."))
+        inst = self.env["otm.ft.install"].sudo().browse(att.res_id)
+        if self.env.user.share:
+            self._otm_portal_lead(inst.lead_id.id)  # customer: only own projects
+        else:
+            self.browse(inst.lead_id.id).check_access("read")
+        return {"mimetype": att.mimetype, "data": att.datas.decode() if isinstance(att.datas, bytes) else att.datas}
+
+    # ---- procurement check of the estimate (availability + costing) before Manager review / client ----
+    def _otm_sync_costing_lines(self):
+        """Copy the latest estimate lines into costing lines, keeping what Procurement already entered."""
+        self.ensure_one()
+        order = self.sudo().order_ids.sorted("id")[-1:]
+        existing = {l.name: l for l in self.sudo().otm_costing_line_ids}
+        keep = self.env["otm.ft.costing.line"]
+        for ol in order.order_line.filtered(lambda x: not x.display_type):
+            line = existing.get(ol.name)
+            vals = {"name": ol.name, "qty": ol.product_uom_qty, "est_price": ol.price_unit}
+            if line:
+                line.write(vals)
+                keep |= line
+            else:
+                keep |= self.env["otm.ft.costing.line"].sudo().create({"lead_id": self.id, **vals})
+        (self.sudo().otm_costing_line_ids - keep).unlink()
+
+    def _otm_costing_to_procurement(self):
+        """After client approval, Procurement starts from the costing they confirmed (they can still change it)."""
+        self.ensure_one()
+        vals = [(0, 0, {"name": l.name, "vendor": l.vendor or "", "qty": l.qty, "price": l.unit_cost}) for l in self.sudo().otm_costing_line_ids if l.unit_cost > 0]
+        if vals:
+            self.sudo().write({"otm_procurement_line_ids": vals})
+
+    def otm_costing_data(self):
+        self.ensure_one()
+        lines = self.sudo().otm_costing_line_ids
+        est = sum(l.qty * l.est_price for l in lines)
+        cost = sum(lines.mapped("cost"))
+        return {
+            "estimate": est, "cost": cost, "margin": est - cost,
+            "lines": [
+                {"id": l.id, "name": l.name, "qty": l.qty, "est_price": l.est_price, "availability": l.availability or "", "lead_days": l.lead_days,
+                 "unit_cost": l.unit_cost, "vendor": l.vendor or "", "note": l.note or ""}
+                for l in lines
+            ],
+        }
+
+    def otm_save_costing(self, lines):
+        self._otm_require(PROC, ("procurement_check",))
+        mine = {l.id: l for l in self.sudo().otm_costing_line_ids}
+        if not lines or len(lines) > 200:
+            raise UserError(self.env._("Nothing to save."))
+        for l in lines:
+            rec = mine.get(int(l.get("id", 0)))
+            if not rec:
+                raise UserError(self.env._("Unknown line."))
+            avail = l.get("availability") or False
+            if avail and avail not in ("in_stock", "order", "unavailable"):
+                raise UserError(self.env._("Invalid availability."))
+            cost, days = float(l.get("unit_cost", 0)), int(l.get("lead_days", 0))
+            if cost < 0 or days < 0 or days > 365:
+                raise UserError(self.env._("Cost and lead time cannot be negative."))
+            rec.write({"availability": avail, "unit_cost": cost, "lead_days": days,
+                       "vendor": str(l.get("vendor", "")).strip()[:120], "note": str(l.get("note", "")).strip()[:200]})
         return True

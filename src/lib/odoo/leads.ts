@@ -126,7 +126,7 @@ export const moveJoinery = (s: Session, jobId: number, stage: string) => callKw<
 
 // ---- customer portal ----
 export type PortalLead = { id: number; name: string; stage: string; progress: number };
-export type PortalDetail = { id: number; name: string; stage: string; progress: number; estimate: Estimate; invoice: InvoiceInfo; updates: SiteUpdate[]; can_approve: boolean; can_signoff: boolean };
+export type PortalDetail = { id: number; name: string; stage: string; progress: number; estimate: Estimate; invoice: InvoiceInfo; updates: SiteUpdate[]; installs: Install[]; snags: { id: number; name: string; status: string }[]; can_raise_snag: boolean; can_approve: boolean; can_signoff: boolean };
 export const portalProfile = (sessionId: string) =>
   callKw<{ portal: boolean; company_id: number; company_name: string }>(sessionId, "crm.lead", "otm_portal_profile", [], {});
 export const portalLeads = (s: Session) => callKw<PortalLead[]>(s.sessionId, "crm.lead", "otm_portal_leads", [], {}, co(s));
@@ -134,3 +134,18 @@ export const portalDetail = (s: Session, id: number) => callKw<PortalDetail>(s.s
 export const portalAction = (s: Session, id: number, action: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_portal_action", [id, action], {}, co(s));
 export const portalUserInfo = (s: Session, id: number) => callKw<{ login: string | false; has_partner: boolean }>(s.sessionId, "crm.lead", "otm_portal_user_info", [[id]], {}, co(s));
 export const createPortalUser = (s: Session, id: number, login: string, password: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_create_portal_user", [[id], login, password], {}, co(s));
+
+// ---- installation ----
+export type Install = { id: number; name: string; kind: "site_visit" | "installation"; status: "planned" | "in_progress" | "done"; team: string; date: string | false; photos: { id: number; label: string; name: string }[] };
+export const getInstalls = (s: Session, id: number) => callKw<Install[]>(s.sessionId, "crm.lead", "otm_installs", [[id]], {}, co(s));
+export const addInstall = (s: Session, id: number, name: string, kind: string, date: string | false, team: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_install", [[id], name, kind, date, team], {}, co(s));
+export const setInstallStatus = (s: Session, installId: number, status: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_set_install_status", [installId, status], {}, co(s));
+export const addInstallPhoto = (s: Session, installId: number, label: string, filename: string, b64: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_photo", [installId, label, filename, b64], {}, co(s));
+export const getPhoto = (s: Session, attId: number) => callKw<{ mimetype: string; data: string }>(s.sessionId, "crm.lead", "otm_photo", [attId], {}, co(s));
+export const raiseSnag = (s: Session, id: number, name: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_portal_raise_snag", [id, name], {}, co(s));
+
+// ---- availability & costing check ----
+export type CostLine = { id: number; name: string; qty: number; est_price: number; availability: "" | "in_stock" | "order" | "unavailable"; lead_days: number; unit_cost: number; vendor: string; note: string };
+export type Costing = { estimate: number; cost: number; margin: number; lines: CostLine[] };
+export const getCosting = (s: Session, id: number) => callKw<Costing>(s.sessionId, "crm.lead", "otm_costing_data", [[id]], {}, co(s));
+export const saveCosting = (s: Session, id: number, lines: CostLine[]) => callKw<boolean>(s.sessionId, "crm.lead", "otm_save_costing", [[id], lines], {}, co(s));

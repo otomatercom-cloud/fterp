@@ -33,7 +33,7 @@ DEMO = [
     ("Pharmacy Fit-out", "CityCare Pharmacy", "other", "sent_to_client", 110000, 16),
     ("Luxury Bedroom Suite", "Layla Hassan", "meta", "estimate_approved", 98000, 14),
     ("Law Office Interior", "Barakat & Partners", "other", "estimate_manager_review", 160000, 12),
-    ("Gym Interior Design", "FitZone", "meta", "estimate_manager_review", 205000, 10),
+    ("Gym Interior Design", "FitZone", "meta", "procurement_check", 205000, 10),
     ("Home Cinema Room", "Vikram Nair", "walkin", "estimate_draft", 70000, 8),
     ("Studio Loft Conversion", "Hana Yusuf", "meta", "estimate_draft", 125000, 6),
     ("Bakery Interior", "Golden Crust Bakery", "meta", "assigned", 0, 4),
@@ -46,7 +46,7 @@ DEMO = [
 ]
 
 PATH = [
-    ("assign", "assigned", MGR), ("create_estimate", "estimate_draft", SM), ("submit_to_manager", "estimate_manager_review", SM),
+    ("assign", "assigned", MGR), ("create_estimate", "estimate_draft", SM), ("submit_to_procurement", "procurement_check", SM), ("confirm_costing", "estimate_manager_review", PROC),
     ("approve", "estimate_approved", MGR), ("send_to_client", "sent_to_client", SM), ("client_approve", "client_approved", SM),
     ("assign_project_manager", "pm_assigned", MGR), ("send_to_procurement", "procurement", PM), ("approve_prices", "procurement_approved", PROC),
     ("start_invoice", "invoice_draft", ACC), ("send_to_sales", "invoice_with_sales", ACC), ("send_to_client", "awaiting_advance", SM),
@@ -116,9 +116,16 @@ class CrmLead(models.Model):
                     "partner_id": partner.id, "opportunity_id": lead.id,
                     "order_line": [(0, 0, {"name": n, "product_uom_qty": 1, "price_unit": round(est * share, 2), "tax_ids": [(6, 0, tax.ids)]}) for n, share in EST_LINES],
                 })
-                if rank >= ORDER.index("estimate_manager_review"):
+                if rank >= ORDER.index("procurement_check"):
                     lead.otm_estimate_amount = order.amount_untaxed
                 total = order.amount_untaxed
+                if rank >= ORDER.index("procurement_check"):
+                    lead._otm_sync_costing_lines()
+                    confirmed = rank >= ORDER.index("estimate_manager_review")
+                    for k, cl in enumerate(lead.otm_costing_line_ids):
+                        if confirmed or k == 0:
+                            cl.write({"availability": ["in_stock", "order", "order", "in_stock"][k % 4], "lead_days": [0, 10, 14, 3][k % 4],
+                                      "unit_cost": round(cl.est_price * rnd.choice([0.72, 0.8, 0.85]), 2), "vendor": VENDORS[k % 4]})
                 if rank >= ORDER.index("procurement"):
                     factor = rnd.choice([0.88, 0.93, 0.97, 1.0])
                     if stage == "procurement" and i % 2:
@@ -163,6 +170,8 @@ class CrmLead(models.Model):
                 for k, (nm, q) in enumerate([("Wardrobe units", 4), ("Kitchen cabinets", 1), ("TV console & wall panel", 1), ("Vanity units", 3)]):
                     st = "installed" if done else ["installed", "ready", "finishing", "assembly"][k]
                     env["otm.ft.joinery"].create({"lead_id": lead.id, "name": nm, "qty": q, "stage": st, "due_date": (now + timedelta(days=10 + k * 3)).date()})
+                for nm, kd, stt, dd in [("Site visit and measurement", "site_visit", "done", -20), ("Joinery installation - phase 1", "installation", "done" if done else "in_progress", -5), ("Final installation and touch-up", "installation", "done" if done else "planned", 5)]:
+                    env["otm.ft.install"].create({"lead_id": lead.id, "name": nm, "kind": kd, "status": stt, "planned_date": (now + timedelta(days=dd)).date(), "team": "Crew A: Ravi, Suresh"})
                 notes = ["Site mobilised, measurements verified", "Ceiling framing and electrical first fix done", "Joinery installation in progress", "Flooring and wall finishes completed", "Snagging and final touch-ups"]
                 final = 100 if (age > 200 or rank > ORDER.index("work_started")) else rnd.choice([35, 55, 70])
                 marks = [p for p in (15, 35, 55, 80, 100) if p <= final] or [final]

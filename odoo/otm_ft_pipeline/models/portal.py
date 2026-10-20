@@ -54,6 +54,9 @@ class CrmLead(models.Model):
             "estimate": lead.otm_estimate_data(),
             "invoice": lead.otm_invoice_data(),
             "updates": lead.otm_site_updates() if lead.otm_stage in ("work_started", "handover", "completed") else [],
+            "installs": [lead._otm_install_dict(i) for i in lead.otm_install_ids] if lead.otm_stage in ("work_started", "handover", "completed") else [],
+            "snags": [{"id": t.id, "name": t.name, "status": t.status} for t in lead.otm_task_ids.filtered(lambda t: t.kind == "snag")],
+            "can_raise_snag": lead.otm_stage == "handover",
             "can_approve": lead.otm_stage == "sent_to_client",
             "can_signoff": lead.otm_stage == "handover",
         }
@@ -64,6 +67,10 @@ class CrmLead(models.Model):
         to_stage = PORTAL_ACTIONS.get((lead.otm_stage, action))
         if not to_stage:
             raise UserError(self.env._("This action is not available now."))
+        if action == "confirm_handover":
+            open_snags = lead.otm_task_ids.filtered(lambda t: t.kind == "snag" and t.status != "done")
+            if open_snags:
+                raise UserError(self.env._("%s snag(s) are still open. They must be fixed before handover.", len(open_snags)))
         if action == "client_approve" and not lead.order_ids:
             raise UserError(self.env._("There is no estimate to approve yet."))
         from_stage = lead.otm_stage
@@ -71,6 +78,19 @@ class CrmLead(models.Model):
         self.env["otm.ft.stage.log"].sudo().create(
             {"lead_id": lead.id, "action": action, "from_stage": from_stage, "to_stage": to_stage, "user_id": self.env.user.id}
         )
+        return True
+
+    @api.model
+    def otm_portal_raise_snag(self, lead_id, name):
+        lead = self._otm_portal_lead(lead_id)
+        if lead.otm_stage != "handover":
+            raise UserError(self.env._("Snags can be raised during handover."))
+        name = str(name or "").strip()[:200]
+        if not name:
+            raise UserError(self.env._("Describe the issue."))
+        if len(lead.otm_task_ids.filtered(lambda t: t.kind == "snag" and t.status != "done")) >= 30:
+            raise UserError(self.env._("Too many open snags. Please contact FT Interior Design."))
+        self.env["otm.ft.task"].sudo().create({"lead_id": lead.id, "name": "[Client] " + name, "kind": "snag", "user_id": self.env.user.id})
         return True
 
     # ---- staff side: give a customer portal access ----

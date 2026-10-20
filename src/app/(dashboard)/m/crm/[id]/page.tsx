@@ -2,12 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { OdooError } from "@/lib/odoo/client";
-import { getEstimate, getInvoice, getJournals, getLead, getLogs, getProcurement, getPurchaseOrders, portalUserInfo, roleUsers } from "@/lib/odoo/leads";
+import { getEstimate, getInvoice, getJournals, getLead, getCosting, getLogs, getProcurement, getPurchaseOrders, portalUserInfo, roleUsers } from "@/lib/odoo/leads";
 import { ACTION_LABELS, FIELD_STAGES, STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
 import { StageActions } from "@/components/stage-actions";
 import { FieldSetter } from "@/components/field-setter";
 import { ProcurementEditor } from "@/components/procurement-editor";
 import { InvoicePanel } from "@/components/invoice-panel";
+import { CostingEditor } from "@/components/costing-editor";
 import { PortalAccess } from "@/components/portal-access";
 import { PurchaseOrders } from "@/components/purchase-orders";
 import { EstimateEditor } from "@/components/estimate-editor";
@@ -22,15 +23,15 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const id = Number(raw);
   if (!Number.isInteger(id) || id <= 0) notFound();
   const s = await requireSession();
-  let lead, est, logs, invoice, proc, pos, portal, journals: { id: number; name: string }[] = [], sms: { id: number; name: string }[] = [], pms: { id: number; name: string }[] = [];
+  let lead, est, logs, invoice, proc, pos, portal, costing, journals: { id: number; name: string }[] = [], sms: { id: number; name: string }[] = [], pms: { id: number; name: string }[] = [];
   try {
     lead = await getLead(s, id);
     if (!lead) notFound();
     const at = (f: string) => FIELD_STAGES[f].includes(lead!.otm_stage as Stage);
     const invStages = ["procurement_approved", "invoice_draft", "invoice_with_sales", "awaiting_advance", "payment_verification", "work_started", "handover", "completed"];
-    [est, logs, invoice, journals, sms, pms, proc, pos, portal] = await Promise.all([
+    [est, logs, invoice, journals, sms, pms, proc, pos, portal, costing] = await Promise.all([
       getEstimate(s, id), getLogs(s, id), invStages.includes(lead.otm_stage) ? getInvoice(s, id) : Promise.resolve(false as const), lead.otm_stage === "payment_verification" ? getJournals(s) : [], at("user_id") ? roleUsers(s, "sales_manager") : [], at("otm_project_manager_id") ? roleUsers(s, "project_manager") : [],
-      getProcurement(s, id), getPurchaseOrders(s, id), portalUserInfo(s, id),
+      getProcurement(s, id), getPurchaseOrders(s, id), portalUserInfo(s, id), getCosting(s, id),
     ]);
   } catch (e) {
     if (e instanceof OdooError) return <p role="alert" className="text-sm text-danger">{e.code === "access" ? "You do not have access to this lead." : e.message}</p>;
@@ -66,6 +67,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         </Card>
       </div>
       {["sales_manager", "manager"].some((r) => s.groups.includes(`otm_ft_pipeline.group_ft_${r}`)) || s.groups.includes("base.group_system") ? <Card title="Customer portal access"><PortalAccess leadId={lead.id} login={portal!.login} hasPartner={portal!.has_partner} /></Card> : null}
+      {costing!.lines.length > 0 && <Card title="Availability & costing (Procurement check)"><CostingEditor key={costing!.cost + ":" + costing!.lines.length + ":" + lead.otm_stage} leadId={lead.id} data={costing!} editable={lead.otm_stage === "procurement_check"} /></Card>}
       <Card title="Estimate"><EstimateEditor key={est!.lines.length + ":" + est!.total} leadId={lead.id} initial={est!.lines} untaxed={est!.untaxed} tax={est!.tax} taxName={est!.tax_name} taxRate={est!.tax_rate} editable={lead.otm_stage === "estimate_draft"} /></Card>
       {(lead.otm_stage === "procurement" || proc!.lines.length > 0) && <Card title="Procurement prices"><ProcurementEditor key={proc!.total + ":" + proc!.lines.length} leadId={lead.id} initial={proc!.lines} total={proc!.total} estimate={lead.otm_estimate_amount} editable={lead.otm_stage === "procurement" && pos!.orders.length === 0} /></Card>}
       {(lead.otm_stage === "procurement" || pos!.orders.length > 0) && <Card title="Purchase orders"><PurchaseOrders key={pos!.pending + ":" + pos!.orders.length} leadId={lead.id} data={pos!} canCreate={lead.otm_stage === "procurement"} /></Card>}

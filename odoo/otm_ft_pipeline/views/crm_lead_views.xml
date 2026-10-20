@@ -8,8 +8,12 @@
             <xpath expr="//header" position="inside">
                 <button name="action_otm_transition" type="object" string="Create Estimate"
                         context="{'otm_action': 'create_estimate'}" invisible="otm_stage != 'assigned'" groups="otm_ft_pipeline.group_ft_sales_manager"/>
-                <button name="action_otm_transition" type="object" string="Submit to Manager"
-                        context="{'otm_action': 'submit_to_manager'}" invisible="otm_stage != 'estimate_draft'" groups="otm_ft_pipeline.group_ft_sales_manager"/>
+                <button name="action_otm_transition" type="object" string="Send to Procurement for Costing"
+                        context="{'otm_action': 'submit_to_procurement'}" invisible="otm_stage != 'estimate_draft'" groups="otm_ft_pipeline.group_ft_sales_manager"/>
+                <button name="action_otm_transition" type="object" string="Confirm Availability &amp; Costing"
+                        context="{'otm_action': 'confirm_costing'}" invisible="otm_stage != 'procurement_check'" groups="otm_ft_pipeline.group_ft_procurement"/>
+                <button name="action_otm_transition" type="object" string="Return to Sales"
+                        context="{'otm_action': 'return_to_sales'}" invisible="otm_stage != 'procurement_check'" groups="otm_ft_pipeline.group_ft_procurement"/>
                 <button name="action_otm_transition" type="object" string="Approve Estimate"
                         context="{'otm_action': 'approve'}" invisible="otm_stage != 'estimate_manager_review'" groups="otm_ft_pipeline.group_ft_manager"/>
                 <button name="action_otm_transition" type="object" string="Reject"

@@ -10,3 +10,5 @@ access_otm_ft_proc_line_proc,otm.ft.procurement.line procurement,model_otm_ft_pr
 access_otm_ft_site_update_user,otm.ft.site.update user,model_otm_ft_site_update,base.group_user,1,0,0,0
 access_otm_ft_task_user,otm.ft.task user,model_otm_ft_task,base.group_user,1,0,0,0
 access_otm_ft_joinery_user,otm.ft.joinery user,model_otm_ft_joinery,base.group_user,1,0,0,0
+access_otm_ft_install_user,otm.ft.install user,model_otm_ft_install,base.group_user,1,0,0,0
+access_otm_ft_costing_user,otm.ft.costing.line user,model_otm_ft_costing_line,base.group_user,1,0,0,0
