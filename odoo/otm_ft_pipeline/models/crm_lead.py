@@ -75,6 +75,7 @@ class CrmLead(models.Model):
     otm_invoice_id = fields.Many2one("account.move", string="Advance Invoice", copy=False, readonly=True)
     otm_log_ids = fields.One2many("otm.ft.stage.log", "lead_id", string="Stage History")
     otm_task_ids = fields.One2many("otm.ft.task", "lead_id", string="Tasks & Snags", copy=False)
+    otm_joinery_ids = fields.One2many("otm.ft.joinery", "lead_id", string="Joinery Jobs", copy=False)
     otm_site_update_ids = fields.One2many("otm.ft.site.update", "lead_id", string="Site Updates", copy=False)
     otm_progress = fields.Integer(string="Site Progress %", compute="_compute_otm_progress", store=True, copy=False)
 
@@ -164,6 +165,9 @@ class CrmLead(models.Model):
             open_snags = self.sudo().otm_task_ids.filtered(lambda t: t.kind == "snag" and t.status != "done")
             if open_snags:
                 raise UserError(self.env._("Close all snags before handover (%s open).", len(open_snags)))
+            unfinished = self.sudo().otm_joinery_ids.filtered(lambda j: j.stage != "installed")
+            if unfinished:
+                raise UserError(self.env._("All joinery items must be installed before handover (%s pending).", len(unfinished)))
             if self.otm_progress < 100:
                 raise UserError(self.env._("Site progress must reach 100%% before handover (now %s%%).", self.otm_progress))
             if not (self.env.user.has_group("base.group_system") or self.otm_project_manager_id == self.env.user):
@@ -497,4 +501,46 @@ class CrmLead(models.Model):
         if status not in ("todo", "doing", "done"):
             raise UserError(self.env._("Invalid status."))
         task.write({"status": status})
+        return True
+
+    # ---- joinery workshop ----
+    @staticmethod
+    def _otm_joinery_dict(j):
+        return {"id": j.id, "lead_id": j.lead_id.id, "project": j.lead_id.name, "name": j.name, "qty": j.qty, "stage": j.stage,
+                "due": fields.Date.to_string(j.due_date) if j.due_date else False}
+
+    def otm_joinery(self):
+        self.ensure_one()
+        return [self._otm_joinery_dict(j) for j in self.sudo().otm_joinery_ids.sorted("id")]
+
+    @api.model
+    def otm_joinery_all(self):
+        """Open joinery jobs across the projects this user can see (record rules apply to the leads)."""
+        leads = self.search([("otm_stage", "in", ("work_started", "handover"))])
+        return [self._otm_joinery_dict(j) for j in self.sudo().env["otm.ft.joinery"].search([("lead_id", "in", leads.ids)], order="id desc", limit=500)]
+
+    def otm_add_joinery(self, name, qty, due=False):
+        self.ensure_one()
+        if not self._otm_can_manage_project():
+            raise UserError(self.env._("Only the assigned Project Manager can manage joinery jobs."))
+        if self.otm_stage not in ("work_started", "handover"):
+            raise UserError(self.env._("Joinery jobs can be added while the project is in progress."))
+        name, qty = str(name or "").strip()[:200], float(qty or 0)
+        if not name or qty <= 0:
+            raise UserError(self.env._("Enter an item name and a quantity above 0."))
+        self.env["otm.ft.joinery"].sudo().create({"lead_id": self.id, "name": name, "qty": qty, "due_date": due or False})
+        return True
+
+    @api.model
+    def otm_move_joinery(self, job_id, stage):
+        job = self.env["otm.ft.joinery"].sudo().browse(int(job_id))
+        if not job.exists():
+            raise UserError(self.env._("Joinery job not found."))
+        lead = self.browse(job.lead_id.id)
+        lead.check_access("read")
+        if not lead._otm_can_manage_project():
+            raise UserError(self.env._("Only the assigned Project Manager can manage joinery jobs."))
+        if stage not in dict(self.env["otm.ft.joinery"]._fields["stage"].selection):
+            raise UserError(self.env._("Invalid stage."))
+        job.write({"stage": stage})
         return True

@@ -117,3 +117,9 @@ export type Task = { id: number; name: string; kind: "task" | "snag"; status: "t
 export const getTasks = (s: Session, id: number) => callKw<Task[]>(s.sessionId, "crm.lead", "otm_tasks", [[id]], {}, co(s));
 export const addTask = (s: Session, id: number, name: string, kind: string, due: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_task", [[id], name, kind, due], {}, co(s));
 export const setTaskStatus = (s: Session, id: number, taskId: number, status: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_set_task_status", [[id], taskId, status], {}, co(s));
+
+export type Joinery = { id: number; lead_id: number; project: string; name: string; qty: number; stage: string; due: string | false };
+export const getJoinery = (s: Session, id: number) => callKw<Joinery[]>(s.sessionId, "crm.lead", "otm_joinery", [[id]], {}, co(s));
+export const getJoineryAll = (s: Session) => callKw<Joinery[]>(s.sessionId, "crm.lead", "otm_joinery_all", [], {}, co(s));
+export const addJoinery = (s: Session, id: number, name: string, qty: number, due: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_add_joinery", [[id], name, qty, due], {}, co(s));
+export const moveJoinery = (s: Session, jobId: number, stage: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_move_joinery", [jobId, stage], {}, co(s));

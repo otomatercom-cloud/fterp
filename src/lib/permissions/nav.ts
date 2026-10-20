@@ -10,7 +10,7 @@ export const NAV: NavItem[] = [
   { slug: "boq", label: "Estimation & BOQ", icon: "Calculator" },
   { slug: "projects", label: "Projects", icon: "FolderKanban", groups: ["otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_accounts", "otm_ft_pipeline.group_ft_procurement"] },
   { slug: "shop-drawings", label: "Shop Drawings", icon: "Ruler" },
-  { slug: "joinery", label: "Joinery Workshop", icon: "Hammer" },
+  { slug: "joinery", label: "Joinery Workshop", icon: "Hammer", groups: ["otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_procurement"] },
   { slug: "procurement", label: "Procurement", icon: "ShoppingCart", groups: ["purchase.group_purchase_user", "purchase.group_purchase_manager"] },
   { slug: "installation", label: "Installation", icon: "HardHat" },
   { slug: "finance", label: "Finance & Accounts", icon: "Landmark", groups: ["account.group_account_invoice", "account.group_account_manager"] },
