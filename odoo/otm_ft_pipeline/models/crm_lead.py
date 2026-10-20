@@ -390,7 +390,7 @@ class CrmLead(models.Model):
         lines = self.sudo().otm_procurement_line_ids
         return {
             "total": sum(lines.mapped("subtotal")),
-            "lines": [{"name": l.name, "vendor": l.vendor or "", "qty": l.qty, "price": l.price} for l in lines],
+            "lines": [{"name": l.name, "vendor": l.vendor or "", "qty": l.qty, "price": l.price, "item_id": l.item_id.id or 0} for l in lines],
         }
 
     def otm_save_procurement(self, lines):
@@ -402,11 +402,14 @@ class CrmLead(models.Model):
             name, qty, price = str(l.get("name", "")).strip()[:200], float(l.get("qty", 0)), float(l.get("price", 0))
             if not name or qty <= 0 or price < 0:
                 raise UserError(self.env._("Each line needs an item, a quantity above 0 and a price of 0 or more."))
-            vals.append((0, 0, {"name": name, "vendor": str(l.get("vendor", "")).strip()[:120], "qty": qty, "price": price}))
+            item = self.env["otm.ft.item"].sudo().browse(int(l.get("item_id") or 0)).exists()
+            vals.append((0, 0, {"name": name, "vendor": str(l.get("vendor", "")).strip()[:120], "qty": qty, "price": price, "item_id": item.id or False}))
         if self.otm_procurement_line_ids.filtered("purchase_id"):
             raise UserError(self.env._("Purchase orders are already created from these prices. Cancel or delete them in Purchase before changing prices."))
         self.otm_procurement_line_ids.unlink()
         self.write({"otm_procurement_line_ids": vals})
+        for pl in self.sudo().otm_procurement_line_ids.filtered("item_id"):
+            self._otm_record_price(pl.item_id, pl.vendor, pl.price, "procurement", self)  # price book for future comparison
         return self.otm_procurement_amount
 
     # ---- project execution (after work starts) ----
@@ -477,7 +480,7 @@ class CrmLead(models.Model):
                 "partner_id": partner.id, "origin": self.name, "company_id": company.id, "otm_lead_id": self.id,
                 "otm_expected_date": fields.Date.context_today(self) + timedelta(days=14),
                 "order_line": [(0, 0, {
-                    "name": l.name, "product_qty": l.qty, "price_unit": l.price,
+                    "name": l.name, "product_qty": l.qty, "price_unit": l.price, "otm_item_id": l.item_id.id or False,
                     **({uom_field: uom.id} if uom else {}),
                     **({tax_field: [(6, 0, tax.ids)]} if tax else {}),
                 }) for l in vlines],

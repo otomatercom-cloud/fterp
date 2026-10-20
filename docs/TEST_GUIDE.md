@@ -161,3 +161,12 @@ Dashboard top: **Today** (dated work due today, overdue items, leads waiting for
 
 ## Project guide (every lead/project page)
 Open any lead (CRM) or project: the top card shows the 7 phases (Lead → Handover), whether it is **your turn** or who the project is waiting for, the numbered steps for the current stage, a shortcut to the right module, what happens next and what to do if something is wrong. Check with different demo logins: the badge changes between "Your turn" and "Waiting for …".
+
+## Scenario N — Inventory, price book and vendor comparison
+Demo data adds 12 items (DEMO-IT-…) with 6 months of quotes from 3 vendors and opening stock.
+1. Login `demo.procurement@ftdemo.com` → **Inventory**: list with on-hand, last price, best vendor; search, category filter, *Low stock only* (e.g. MDF board and Engineered wood flooring are below their reorder level). **Add item** (code, name, category, unit, reorder level).
+2. Open an item: **Vendor comparison** (latest quote per vendor, % above best, average/min/max, trend ▲▼, number of quotes, "Best" badge), **Price trend** chart per vendor, **Add quote** (vendor, price, date), **Quote history** (source: manual / procurement / purchase order), **Stock** ledger.
+3. Procurement step: open a lead at stage *Procurement* → *Procurement prices*: type or pick an item from the inventory list. The line shows last/best price, stock on hand, "% above best", **Use best** or one click per vendor. **Save prices** stores each quote in the price book automatically; confirming the PO stores the PO price too (same quote on the same day is not duplicated).
+4. **Receive** goods on a PO line that came from an inventory item: stock increases (ledger shows the PO number).
+5. Stock: *Issue to project* (Procurement/Manager/the assigned PM for own projects; cannot exceed stock), *Add stock* and *Set counted qty* (Procurement/Manager; a reason is required for a difference). Going under the reorder level notifies Procurement.
+6. Roles: Procurement/Manager edit; Project Manager and Accounts view (PM can issue); Sales and customers have no Inventory menu.

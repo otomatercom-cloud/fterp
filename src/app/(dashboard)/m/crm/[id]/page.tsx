@@ -11,6 +11,7 @@ import { EstimateRevisions } from "@/components/estimate-revisions";
 import { getEstimate, getInvoice, getJournals, getLead, getCosting, getLogs, getProcurement, getPurchaseOrders, portalUserInfo, roleUsers } from "@/lib/odoo/leads";
 import { ACTION_LABELS, FIELD_STAGES, STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
 import { ProjectGuide } from "@/components/project-guide";
+import { getInvItems, type InvItem } from "@/lib/odoo/leads";
 import { StageActions } from "@/components/stage-actions";
 import { FieldSetter } from "@/components/field-setter";
 import { ProcurementEditor } from "@/components/procurement-editor";
@@ -46,6 +47,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   }
   let designs: Design[] = [];
   try { designs = await getDesigns(s, id); } catch { /* module not upgraded yet */ }
+  let invItems: InvItem[] = [];
+  if (lead.otm_stage === "procurement") { try { invItems = (await getInvItems(s)).items; } catch { /* no inventory access */ } }
   let rates: Rate[] = [], revs: EstRev[] = [];
   try {
     if (lead.otm_stage === "estimate_draft") rates = (await getRates(s)).rates;
@@ -92,7 +95,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       <Card title="Design & drawings">{canAddDesign && <div className="mb-3"><DesignAdd leadId={lead.id} /></div>}<DesignList items={designs} /></Card>
       <Card title="Estimate"><EstimateEditor rates={rates} key={est!.lines.length + ":" + est!.total} leadId={lead.id} initial={est!.lines} untaxed={est!.untaxed} tax={est!.tax} taxName={est!.tax_name} taxRate={est!.tax_rate} editable={lead.otm_stage === "estimate_draft"} /></Card>
       {revs.length > 0 && <Card title="Estimate revisions"><EstimateRevisions leadId={lead.id} revs={revs} canRestore={lead.otm_stage === "estimate_draft" && (s.groups.includes("otm_ft_pipeline.group_ft_sales_manager") || s.groups.includes("base.group_system"))} /></Card>}
-      {(lead.otm_stage === "procurement" || proc!.lines.length > 0) && <Card title="Procurement prices"><ProcurementEditor key={proc!.total + ":" + proc!.lines.length} leadId={lead.id} initial={proc!.lines} total={proc!.total} estimate={lead.otm_estimate_amount} editable={lead.otm_stage === "procurement" && pos!.orders.length === 0} /></Card>}
+      {(lead.otm_stage === "procurement" || proc!.lines.length > 0) && <Card title="Procurement prices"><ProcurementEditor key={proc!.total + ":" + proc!.lines.length} leadId={lead.id} initial={proc!.lines} total={proc!.total} estimate={lead.otm_estimate_amount} editable={lead.otm_stage === "procurement" && pos!.orders.length === 0}  items={invItems} /></Card>}
       {(lead.otm_stage === "procurement" || pos!.orders.length > 0) && <Card title="Purchase orders"><PurchaseOrders key={pos!.pending + ":" + pos!.orders.length} leadId={lead.id} data={pos!} canCreate={lead.otm_stage === "procurement"} /></Card>}
       {(invoice || ["invoice_draft", "payment_verification"].includes(lead.otm_stage)) && <Card title="Advance invoice"><InvoicePanel leadId={lead.id} stage={lead.otm_stage} invoice={invoice} journals={journals} /></Card>}
       <Card title="History">

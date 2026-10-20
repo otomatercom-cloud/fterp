@@ -57,7 +57,7 @@ export const createInvoice = (s: Session, id: number, amount: number) => callKw<
 export const postInvoice = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_post_invoice", [[id]], {}, co(s));
 export const registerPayment = (s: Session, id: number, journalId: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_register_payment", [[id], journalId], {}, co(s));
 
-export type ProcLine = { name: string; vendor: string; qty: number; price: number };
+export type ProcLine = { name: string; vendor: string; qty: number; price: number; item_id?: number };
 export const getProcurement = (s: Session, id: number) => callKw<{ total: number; lines: ProcLine[] }>(s.sessionId, "crm.lead", "otm_procurement_data", [[id]], {}, co(s));
 export const saveProcurement = (s: Session, id: number, lines: ProcLine[]) => callKw<number>(s.sessionId, "crm.lead", "otm_save_procurement", [[id], lines], {}, co(s));
 
@@ -267,3 +267,14 @@ export const getPettyStatementCsv = (s: Session, month: string) => callKw<string
 
 export type CalEvent = { date: string; title: string; kind: "task" | "snag" | "joinery" | "install" | "design" | "payment" | "delivery"; link: string; project: string; extra: string };
 export const getCalendar = (s: Session, from: string, to: string) => callKw<CalEvent[]>(s.sessionId, "crm.lead", "otm_calendar", [from, to], {}, co(s)).catch(() => [] as CalEvent[]);
+
+export type InvItem = { id: number; code: string; name: string; category: string; unit: string; min_qty: number; description: string; on_hand: number; low: boolean; last_price: number; last_vendor: string; last_date: string | false; best_price: number; best_vendor: string; vendors: { vendor: string; latest: number }[] };
+export type InvVendorStat = { vendor: string; latest: number; latest_date: string; avg: number; min: number; max: number; count: number; trend: number; vs_best: number };
+export type InvDetail = InvItem & { can_edit: boolean; can_issue: boolean; stats: InvVendorStat[]; history: { id: number; date: string; vendor: string; price: number; source: string; project: string; user: string; note: string }[]; ledger: { id: number; date: string; kind: "in" | "out" | "adjust"; qty: number; project: string; po: string; user: string; note: string }[] };
+export const getInvItems = (s: Session) => callKw<{ can_edit: boolean; items: InvItem[] }>(s.sessionId, "crm.lead", "otm_inv_items", [], {}, co(s));
+export const getInvItem = (s: Session, id: number) => callKw<InvDetail>(s.sessionId, "crm.lead", "otm_inv_item", [id], {}, co(s));
+export const saveInvItem = (s: Session, id: number, code: string, name: string, category: string, unit: string, min: number, desc: string) => callKw<number>(s.sessionId, "crm.lead", "otm_inv_item_save", [id, code, name, category, unit, min, desc], {}, co(s));
+export const archiveInvItem = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_inv_item_archive", [id], {}, co(s));
+export const addInvPrice = (s: Session, id: number, vendor: string, price: number, date: string, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_inv_price_add", [id, vendor, price, date, note], {}, co(s));
+export const moveInvStock = (s: Session, id: number, kind: string, qty: number, note: string, lead: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_inv_stock_move", [id, kind, qty, note, lead], {}, co(s));
+export const getLeadsLite = (s: Session) => callKw<{ id: number; name: string }[]>(s.sessionId, "crm.lead", "search_read", [[["otm_stage", "in", ["pm_assigned", "procurement", "procurement_approved", "invoice_draft", "invoice_with_sales", "awaiting_advance", "payment_verification", "work_started", "handover"]]]], { fields: ["name"], limit: 200, order: "write_date desc" }, co(s));

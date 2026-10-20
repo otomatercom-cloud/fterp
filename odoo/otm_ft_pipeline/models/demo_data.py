@@ -105,6 +105,14 @@ DEMO_RATES = [
     ("DEMO-FU-001", "Loose sofa set, 3+2", "furniture", "set", 5200, 3600), ("DEMO-FU-002", "Dining table, 6 seater", "furniture", "nos", 3400, 2300),
     ("DEMO-OT-001", "Project supervision and site clean-up", "other", "ls", 4500, 3000),
 ]
+INV_ITEMS = [  # code, name, category, unit, base price, reorder level, opening stock
+    ("DEMO-IT-001", "Marine plywood 18mm", "joinery", "sheet", 185, 20, 60), ("DEMO-IT-002", "MDF board 18mm", "joinery", "sheet", 95, 20, 12),
+    ("DEMO-IT-003", "Gypsum board 12.5mm", "ceiling", "sheet", 26, 40, 150), ("DEMO-IT-004", "GI channel 3m", "ceiling", "nos", 9, 100, 400),
+    ("DEMO-IT-005", "Porcelain tile 60x60", "flooring", "sqm", 48, 50, 220), ("DEMO-IT-006", "Engineered wood flooring", "flooring", "sqm", 88, 30, 25),
+    ("DEMO-IT-007", "Emulsion paint 20L", "wall", "drum", 210, 5, 14), ("DEMO-IT-008", "Quartz slab 3m", "kitchen", "slab", 1450, 2, 6),
+    ("DEMO-IT-009", "LED downlight 12W", "lighting", "nos", 22, 40, 120), ("DEMO-IT-010", "Soft-close hinge", "joinery", "pair", 7.5, 100, 90),
+    ("DEMO-IT-011", "Electrical cable 2.5mm 100m", "mep", "coil", 135, 6, 18), ("DEMO-IT-012", "Edge banding tape 50m", "joinery", "roll", 14, 20, 45),
+]
 VENDORS = ["Al Noor Timber Trading", "Gulf Gypsum LLC", "Stonehill Marble", "Lumina Lighting"]
 
 
@@ -160,6 +168,15 @@ class CrmLead(models.Model):
         for code, rn, cat_, unit_, rate_, cost_ in DEMO_RATES:
             if not env["otm.ft.rate"].with_context(active_test=False).search_count([("code", "=", code), ("company_id", "=", self.env.company.id)]):
                 env["otm.ft.rate"].create({"code": code, "name": rn, "category": cat_, "unit": unit_, "rate": rate_, "cost": cost_, "company_id": self.env.company.id})
+        for code, nm, cat_, unit_, base, minq, opening in INV_ITEMS:  # inventory items with 6 months of vendor quotes
+            if env["otm.ft.item"].with_context(active_test=False).search_count([("code", "=", code)]):
+                continue
+            it = env["otm.ft.item"].create({"code": code, "name": nm, "category": cat_, "unit": unit_, "min_qty": minq})
+            for vi, vn in enumerate(VENDORS[:3]):
+                for mo in range(6):
+                    drift = 1 + (mo - 3) * 0.012 * (1 if vi != 1 else -0.5)  # vendors move differently over time
+                    env["otm.ft.price"].create({"item_id": it.id, "vendor": vn, "price": round(base * (0.96 + 0.05 * vi) * drift, 2), "date": fields.Date.context_today(self) - timedelta(days=30 * (5 - mo) + vi * 3), "source": "manual", "note": "Demo quote"})
+            env["otm.ft.stock"].create({"item_id": it.id, "qty": opening, "kind": "in", "note": "Opening stock (demo)"})
         for v in VENDORS:  # tagged vendors so removal is clean
             if not env["res.partner"].search([("name", "=", v)], limit=1):
                 env["res.partner"].create({"name": v, "company_type": "company", "ref": DEMO_REF})
@@ -430,6 +447,7 @@ class CrmLead(models.Model):
             except Exception:
                 pass
         env["otm.ft.rate"].with_context(active_test=False).search([("code", "=like", "DEMO-%")]).unlink()
+        env["otm.ft.item"].with_context(active_test=False).search([("code", "=like", "DEMO-%")]).unlink()
         removed = len(leads)
         try:
             with env.cr.savepoint():

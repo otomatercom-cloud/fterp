@@ -108,6 +108,7 @@ class CrmLeadProcurement(models.Model):
             raise UserError(self.env._("Only a draft purchase order can be confirmed."))
         po.write({"otm_expected_date": expected or po.otm_expected_date or fields.Date.context_today(self) + timedelta(days=14)})
         po.button_confirm()
+        self._otm_record_po_prices(po)
         return True
 
     @api.model
@@ -148,6 +149,7 @@ class CrmLeadProcurement(models.Model):
             if qty > line.product_qty - line.otm_received_qty + 1e-6:
                 raise UserError(self.env._("Received quantity for '%s' exceeds what is still due.", line.name))
             Receipt.create({"line_id": line.id, "qty": qty, "note": str(note or "").strip()[:200]})
+            self._otm_stock_receive(line, qty)
             made += 1
         if not made:
             raise UserError(self.env._("Enter a quantity above 0 for at least one line."))

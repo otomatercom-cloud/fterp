@@ -85,7 +85,7 @@ export async function registerPaymentAction(leadId: number, journalId: number): 
   return {};
 }
 
-const proc = z.array(z.object({ name: z.string().trim().min(1).max(200), vendor: z.string().trim().max(120), qty: z.number().positive().max(1e6), price: z.number().min(0).max(1e9) })).min(1).max(200);
+const proc = z.array(z.object({ name: z.string().trim().min(1).max(200), vendor: z.string().trim().max(120), qty: z.number().positive().max(1e6), price: z.number().min(0).max(1e9), item_id: z.number().int().min(0).optional() })).min(1).max(200);
 export async function saveProcurementAction(leadId: number, input: unknown): Promise<R> {
   const p = proc.safeParse(input);
   if (!id.safeParse(leadId).success || !p.success) return { error: "Each line needs an item, quantity above 0 and a price of 0 or more." };

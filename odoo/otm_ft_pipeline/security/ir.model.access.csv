@@ -27,3 +27,6 @@ access_otm_ft_payslip_user,otm.ft.payslip user,model_otm_ft_payslip,base.group_u
 access_otm_ft_notification_user,otm.ft.notification user,model_otm_ft_notification,base.group_user,1,0,0,0
 access_otm_ft_msg_log_user,otm.ft.msg.log user,model_otm_ft_msg_log,base.group_user,1,0,0,0
 access_otm_ft_petty_count_user,otm.ft.petty.count user,model_otm_ft_petty_count,base.group_user,1,0,0,0
+access_otm_ft_item_user,otm.ft.item user,model_otm_ft_item,base.group_user,1,0,0,0
+access_otm_ft_price_user,otm.ft.price user,model_otm_ft_price,base.group_user,1,0,0,0
+access_otm_ft_stock_user,otm.ft.stock user,model_otm_ft_stock,base.group_user,1,0,0,0

@@ -12,6 +12,7 @@ export const NAV: NavItem[] = [
   { slug: "shop-drawings", label: "Shop Drawings", icon: "Ruler" },
   { slug: "joinery", label: "Joinery Workshop", icon: "Hammer", groups: ["otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_procurement"] },
   { slug: "procurement", label: "Procurement", icon: "ShoppingCart", groups: ["otm_ft_pipeline.group_ft_procurement", "otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager"] },
+  { slug: "inventory", label: "Inventory", icon: "Boxes", groups: ["otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_procurement", "otm_ft_pipeline.group_ft_accounts"] },
   { slug: "installation", label: "Installation", icon: "HardHat" },
   { slug: "finance", label: "Finance & Accounts", icon: "Landmark", groups: ["otm_ft_pipeline.group_ft_accounts", "otm_ft_pipeline.group_ft_manager", "account.group_account_manager"] },
   { slug: "petty-cash", label: "Petty Cash", icon: "Wallet", groups: ["otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_procurement", "otm_ft_pipeline.group_ft_accounts"] },

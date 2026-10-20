@@ -89,3 +89,24 @@ export function PillGauge({ label, percent, color }: { label: string; percent: n
     </div>
   );
 }
+
+/** Price trend per vendor (forward-filled step values over the quote dates). Y axis is zoomed to the data range. */
+export function PriceChart({ dates, series, height = 220 }: { dates: string[]; series: Series[]; height?: number }) {
+  const W = 640, H = height, L = 44, R = 10, T = 12, B = 26;
+  const all = series.flatMap((s) => s.values).filter((v) => v > 0);
+  if (dates.length < 2 || !all.length) return <p className="text-sm text-muted">At least two quotes on different dates are needed for a trend.</p>;
+  const lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo || hi * 0.1 || 1) * 0.15;
+  const min = Math.max(0, lo - pad), max = hi + pad;
+  const x = (i: number) => L + (i * (W - L - R)) / (dates.length - 1);
+  const y = (v: number) => T + (1 - (v - min) / (max - min)) * (H - T - B);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Price trend by vendor">
+      {[0, 1, 2, 3].map((g) => { const v = min + ((max - min) / 3) * g; return <g key={g}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="var(--color-line)" /><text x={L - 6} y={y(v) + 3} textAnchor="end" fontSize="10" fill="var(--color-muted)">{v.toFixed(v < 10 ? 2 : 0)}</text></g>; })}
+      {dates.map((d, i) => (i % Math.ceil(dates.length / 6) === 0) && <text key={d} x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="var(--color-muted)">{d.slice(2)}</text>)}
+      {series.map((s) => {
+        const pts = s.values.map((v, i) => (v > 0 ? `${x(i)},${y(v)}` : null)).filter(Boolean).join(" ");
+        return <g key={s.name}><polyline points={pts} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" />{s.values.map((v, i) => v > 0 && <circle key={i} cx={x(i)} cy={y(v)} r="2.5" fill={s.color} />)}</g>;
+      })}
+    </svg>
+  );
+}
