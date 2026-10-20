@@ -20,3 +20,4 @@ from . import notify
 from . import workqueue
 from . import petty_acct
 from . import inventory
+from . import customer

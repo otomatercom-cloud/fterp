@@ -6,6 +6,7 @@ export const NAV: NavItem[] = [
   { slug: "dashboard", label: "Dashboard", icon: "LayoutDashboard" },
   { slug: "tasks", label: "My Tasks", icon: "ListChecks" },
   { slug: "crm", label: "CRM & Sales", icon: "Users", groups: ["sales_team.group_sale_salesman", "sales_team.group_sale_manager", "otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_procurement", "otm_ft_pipeline.group_ft_accounts"] },
+  { slug: "customers", label: "Customers", icon: "Contact", groups: ["otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_accounts"] },
   { slug: "design", label: "Design Studio", icon: "PenTool" },
   { slug: "boq", label: "Estimation & BOQ", icon: "Calculator" },
   { slug: "projects", label: "Projects", icon: "FolderKanban", groups: ["otm_ft_pipeline.group_ft_manager", "otm_ft_pipeline.group_ft_project_manager", "otm_ft_pipeline.group_ft_sales_manager", "otm_ft_pipeline.group_ft_accounts", "otm_ft_pipeline.group_ft_procurement"] },

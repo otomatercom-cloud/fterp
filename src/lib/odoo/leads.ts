@@ -265,7 +265,7 @@ export const postPettyPending = (s: Session) => callKw<{ posted: number; failed:
 export const getPettyStatement = (s: Session, month: string) => callKw<PettyStatement>(s.sessionId, "crm.lead", "otm_petty_statement", [month], {}, co(s));
 export const getPettyStatementCsv = (s: Session, month: string) => callKw<string>(s.sessionId, "crm.lead", "otm_petty_statement_csv", [month], {}, co(s));
 
-export type CalEvent = { date: string; title: string; kind: "task" | "snag" | "joinery" | "install" | "design" | "payment" | "delivery"; link: string; project: string; extra: string };
+export type CalEvent = { date: string; title: string; kind: "task" | "snag" | "joinery" | "install" | "design" | "payment" | "delivery" | "followup"; link: string; project: string; extra: string };
 export const getCalendar = (s: Session, from: string, to: string) => callKw<CalEvent[]>(s.sessionId, "crm.lead", "otm_calendar", [from, to], {}, co(s)).catch(() => [] as CalEvent[]);
 
 export type InvItem = { id: number; code: string; name: string; category: string; unit: string; min_qty: number; description: string; on_hand: number; low: boolean; last_price: number; last_vendor: string; last_date: string | false; best_price: number; best_vendor: string; vendors: { vendor: string; latest: number }[] };
@@ -278,3 +278,13 @@ export const archiveInvItem = (s: Session, id: number) => callKw<boolean>(s.sess
 export const addInvPrice = (s: Session, id: number, vendor: string, price: number, date: string, note: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_inv_price_add", [id, vendor, price, date, note], {}, co(s));
 export const moveInvStock = (s: Session, id: number, kind: string, qty: number, note: string, lead: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_inv_stock_move", [id, kind, qty, note, lead], {}, co(s));
 export const getLeadsLite = (s: Session) => callKw<{ id: number; name: string }[]>(s.sessionId, "crm.lead", "search_read", [[["otm_stage", "in", ["pm_assigned", "procurement", "procurement_approved", "invoice_draft", "invoice_with_sales", "awaiting_advance", "payment_verification", "work_started", "handover"]]]], { fields: ["name"], limit: 200, order: "write_date desc" }, co(s));
+
+export type CustProject = { id: number; name: string; stage: string; estimate: number; origin: string };
+export type Customer = { id: number; name: string; phone: string; whatsapp: string; email: string; address: string; person: string; projects: CustProject[]; last_contact: string | false; next_followup: string | false };
+export type ContactLog = { id: number; kind: string; text: string; date: string; user: string; project: string; lead_id: number; followup: string | false; done: boolean };
+export type CustomerDetail = Customer & { logs: ContactLog[]; can_edit: boolean; can_log: boolean; focus_lead: number };
+export const getCustomers = (s: Session) => callKw<{ can_edit: boolean; customers: Customer[] }>(s.sessionId, "crm.lead", "otm_customers", [], {}, co(s));
+export const getCustomer = (s: Session, leadId: number) => callKw<CustomerDetail>(s.sessionId, "crm.lead", "otm_customer", [leadId], {}, co(s));
+export const saveCustomer = (s: Session, leadId: number, name: string, phone: string, wa: string, email: string, address: string, person: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_customer_save", [leadId, name, phone, wa, email, address, person], {}, co(s));
+export const addContactLog = (s: Session, leadId: number, kind: string, text: string, followup: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_contact_log_add", [leadId, kind, text, followup], {}, co(s));
+export const doneFollowup = (s: Session, logId: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_contact_followup_done", [logId], {}, co(s));

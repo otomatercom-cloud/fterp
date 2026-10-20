@@ -190,7 +190,7 @@ class CrmLead(models.Model):
             vals = {
                 "name": name, "type": "opportunity", "partner_name": cust, "otm_origin": origin, "otm_stage": stage,
                 "tag_ids": [(6, 0, tag.ids)], "expected_revenue": est or rnd.choice([60000, 90000, 150000]),
-                "phone": f"+971 50 {rnd.randint(1000000, 9999999)}", "email_from": cust.split()[0].lower() + "@example.com",
+                "otm_address": rnd.choice(["Business Bay, Dubai", "Jumeirah Lakes Towers, Dubai", "Dubai Marina", "Downtown Dubai", "Al Barsha, Dubai", "Abu Dhabi, Al Reem Island"]), "phone": f"+971 50 {rnd.randint(1000000, 9999999)}", "email_from": cust.split()[0].lower() + "@example.com",
             }
             if rank >= 1:
                 vals["user_id"] = sms[i % len(sms)].id
@@ -221,8 +221,19 @@ class CrmLead(models.Model):
                     factor = rnd.choice([0.88, 0.93, 0.97, 1.0])
                     if stage == "procurement" and i % 2:
                         factor = 1.08  # over estimate -> needs Manager approval
-                    lines = [(0, 0, {"name": n, "vendor": VENDORS[k % 4], "qty": 1, "price": round(total * share * factor, 2)}) for k, (n, share) in enumerate(EST_LINES)]
+                    inv = env["otm.ft.item"].search([("code", "=like", "DEMO-IT-%")], order="code")
+                    lines = []
+                    for k, (n, share) in enumerate(EST_LINES):
+                        if inv:  # real inventory items: unit price from the vendor's quote level, qty sized to the share of the budget
+                            it, vi = inv[(i + k) % len(inv)], k % 3
+                            base = env["otm.ft.price"].search([("item_id", "=", it.id), ("vendor", "=", VENDORS[vi])], order="date desc", limit=1).price or 10.0
+                            unit = round(base * (0.99 + 0.02 * ((i + k) % 4)), 2)
+                            lines.append((0, 0, {"name": it.name, "vendor": VENDORS[vi], "qty": max(1.0, round(total * share * factor / unit)), "price": unit, "item_id": it.id}))
+                        else:
+                            lines.append((0, 0, {"name": n, "vendor": VENDORS[k % 4], "qty": 1, "price": round(total * share * factor, 2)}))
                     lead.otm_procurement_line_ids = lines
+                    for pl in lead.otm_procurement_line_ids.filtered("item_id"):
+                        lead._otm_record_price(pl.item_id, pl.vendor, pl.price, "procurement", lead)
                 if rank >= ORDER.index("invoice_draft"):
                     advance = round(total * 0.3, 2)
                     try:
@@ -272,17 +283,27 @@ class CrmLead(models.Model):
                             with env.cr.savepoint():
                                 po.otm_expected_date = today + timedelta(days={1: 10, 2: -6, 3: -20}[mode])
                                 po.button_confirm()
+                                lead._otm_record_po_prices(po)
                                 lines = po.order_line.filtered(lambda l: not l.display_type)
                                 if mode == 3:
                                     for l in lines:
                                         env["otm.ft.receipt"].create({"line_id": l.id, "qty": l.product_qty, "note": "Delivered in full", "user_id": users[PROC].id})
+                                        lead._otm_stock_receive(l, l.product_qty)
                                 elif mode == 2 and lines:
                                     env["otm.ft.receipt"].create({"line_id": lines[0].id, "qty": lines[0].product_qty / 2, "note": "Part delivery", "user_id": users[PROC].id})
+                                    lead._otm_stock_receive(lines[0], lines[0].product_qty / 2)
                         except Exception:
                             skipped += 1
                 except Exception:  # purchase not fully configured: keep the lead, skip POs
                     skipped += 1
 
+            if lead.phone:
+                lead.otm_whatsapp = lead.phone
+            lead.otm_contact_person = cust
+            for k, (kd, tx) in enumerate([("call", "Introductory call, requirement and budget discussed"), ("visit", "Site visit and measurements taken"), ("whatsapp", "Shared moodboard and sample photos"), ("meeting", "Reviewed estimate and timeline")][: 1 + i % 4]):
+                env["otm.ft.contact.log"].create({"lead_id": lead.id, "kind": kd, "text": tx, "user_id": users[SM].id, "date": created + timedelta(days=k + 1)})
+            if stage not in ("completed", "lost"):
+                env["otm.ft.contact.log"].create({"lead_id": lead.id, "kind": "call", "text": "Follow up on decision and next steps", "user_id": users[SM].id, "followup_date": (now + timedelta(days=(i % 7) - 2)).date()})
             # history: one log row per step taken, spread from creation to now
             steps = [p for p in PATH if ORDER.index(p[1]) <= rank]
             if stage == "lost":

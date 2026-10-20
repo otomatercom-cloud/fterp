@@ -170,3 +170,10 @@ Demo data adds 12 items (DEMO-IT-…) with 6 months of quotes from 3 vendors and
 4. **Receive** goods on a PO line that came from an inventory item: stock increases (ledger shows the PO number).
 5. Stock: *Issue to project* (Procurement/Manager/the assigned PM for own projects; cannot exceed stock), *Add stock* and *Set counted qty* (Procurement/Manager; a reason is required for a difference). Going under the reorder level notifies Procurement.
 6. Roles: Procurement/Manager edit; Project Manager and Accounts view (PM can issue); Sales and customers have no Inventory menu.
+
+## Scenario O — Customers (contacts, follow-ups) and inventory demo
+1. Login `demo.sales1@ftdemo.com` → **Customers**: every customer of your leads with phone, email, area, number of projects and next follow-up. Search by name/phone/area; tick *Follow-up due*. **📞 Call / 💬 WhatsApp / ✉ Email** open the phone dialer, WhatsApp chat and mail app.
+2. Open a customer: edit contact details (name, contact person, phone, WhatsApp, email, address) — saved on all that customer's leads (Sales Manager of the lead or a Manager only). *Projects* lists every project with its stage. *Follow-ups & contact history*: **Log** a call/WhatsApp/meeting/site visit/email/note, optionally with a follow-up date; **Mark done** when finished.
+3. Follow-ups appear on the Dashboard calendar and in *Today / Overdue*; a daily job notifies the Sales Manager when one is due. The lead page has Call / WhatsApp / Email buttons and a **Customer profile & follow-ups** link.
+4. `demo.manager` sees all customers and can edit any; `demo.pm1` and `demo.accounts` can view; PM/Manager can log contact; customers and Procurement/Factory have no Customers menu.
+5. Inventory demo: leads from *Procurement* stage onward use real inventory items. Open *Inventory* → an item (e.g. Marine plywood): quotes from *Procurement* and *Purchase order* sources appear next to the demo quotes; received POs show stock-in movements; items on delivered POs raise on-hand.

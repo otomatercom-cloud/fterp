@@ -150,6 +150,9 @@ class CrmLeadNotify(models.Model):
             phone = lead.phone or lead.partner_id.phone
             if phone and not recent:
                 self._otm_send_wa(phone, f"Dear {lead.partner_name or 'Customer'}, a payment of {m.invoice_id.amount_residual:g} for {lead.name} ({m.name}) was due on {due}. Please arrange payment at your earliest convenience.", "reminder", lead)
+        for g in env["otm.ft.contact.log"].search([("followup_done", "=", False), ("followup_date", "<=", today)]):
+            owner = g.lead_id.user_id or g.user_id
+            self._otm_notify(owner, f"Follow up: {g.lead_id.partner_name or g.lead_id.name}", g.text[:200], f"/m/customers/{g.lead_id.id}", "task" if g.followup_date == today else "alert", g.lead_id)
         for po in env["purchase.order"].search([("otm_lead_id", "!=", False), ("state", "in", ("purchase", "done")), ("otm_receipt_state", "!=", "received"), ("otm_expected_date", "<", today)]):
             self._otm_notify(self._otm_users_with(PROC), f"Delivery overdue: {po.name}", f"{po.partner_id.name} · expected {po.otm_expected_date}", "/m/procurement", "alert", po.otm_lead_id)
         return True

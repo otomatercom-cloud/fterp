@@ -12,6 +12,7 @@ import { getEstimate, getInvoice, getJournals, getLead, getCosting, getLogs, get
 import { ACTION_LABELS, FIELD_STAGES, STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
 import { ProjectGuide } from "@/components/project-guide";
 import { getInvItems, type InvItem } from "@/lib/odoo/leads";
+import { ContactLinks } from "@/components/contact-links";
 import { StageActions } from "@/components/stage-actions";
 import { FieldSetter } from "@/components/field-setter";
 import { ProcurementEditor } from "@/components/procurement-editor";
@@ -72,6 +73,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       <Card title="Next step"><StageActions id={lead.id} stage={lead.otm_stage} /></Card>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Lead details">
+          <div className="mb-3 flex flex-wrap items-center gap-2"><ContactLinks phone={lead.phone || undefined} email={lead.email_from || undefined} />{["sales_manager", "manager", "project_manager", "accounts"].some((r) => s.groups.includes(`otm_ft_pipeline.group_ft_${r}`)) || s.groups.includes("base.group_system") ? <Link href={`/m/customers/${lead.id}`} className="rounded-full border border-gold/50 px-3 py-1 text-xs text-gold hover:bg-tint">Customer profile &amp; follow-ups →</Link> : null}</div>
           <dl className="grid grid-cols-[8rem_1fr] gap-y-1.5 text-sm">
             {[["Customer", lead.partner_name], ["Phone", lead.phone], ["Email", lead.email_from], ["Source", lead.otm_origin], ["Budget", n(lead.expected_revenue)],
               ["Sales Manager", lead.user_id && lead.user_id[1]], ["Project Manager", lead.otm_project_manager_id && lead.otm_project_manager_id[1]],

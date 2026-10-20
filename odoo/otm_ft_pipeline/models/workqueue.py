@@ -71,5 +71,7 @@ class CrmLeadQueue(models.Model):
         if any(r in roles for r in ("procurement", "manager", "project_manager")) or self.env.user.has_group("base.group_system"):
             for po in env["purchase.order"].search([("otm_lead_id", "in", ids), ("state", "in", ("purchase", "done")), ("otm_receipt_state", "!=", "received"), ("otm_expected_date", ">=", d0), ("otm_expected_date", "<=", d1)]):
                 add(po.otm_expected_date, f"Delivery: {po.name} · {po.partner_id.name}", "delivery", po.otm_lead_id)
+        for g in env["otm.ft.contact.log"].search([("lead_id", "in", ids), ("followup_done", "=", False), ("followup_date", ">=", d0), ("followup_date", "<=", d1)]):
+            add(g.followup_date, f"Follow up: {g.lead_id.partner_name or g.lead_id.name} — {g.text[:60]}", "followup", g.lead_id)
         ev.sort(key=lambda e: (e["date"], e["kind"]))
         return ev
