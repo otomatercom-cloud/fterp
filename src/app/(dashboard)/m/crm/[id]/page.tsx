@@ -101,6 +101,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       <Card title="Estimate"><EstimateEditor rates={rates} key={est!.lines.length + ":" + est!.total + ":" + est!.valid_until} leadId={lead.id} initial={est!.lines} untaxed={est!.untaxed} tax={est!.tax} taxName={est!.tax_name} taxRate={est!.tax_rate} editable={lead.otm_stage === "estimate_draft"} cfg={cfg} summary={est!.summary} validUntil={est!.valid_until} expired={est!.expired} canValidity={lead.otm_stage === "estimate_draft" && (s.groups.includes("otm_ft_pipeline.group_ft_sales_manager") || s.groups.includes("otm_ft_pipeline.group_ft_manager") || s.groups.includes("base.group_system"))} /></Card>
       {docs && <Card title="Documents"><DocsPanel leadId={lead.id} kinds={docs.kinds} docs={docs.docs} prints={[
         ...(est!.lines.length > 0 ? [{ href: `/print/quotation/${lead.id}`, label: "Print quotation" }] : []),
+        ...(invoice ? [{ href: `/print/invoice/${lead.id}`, label: "Print invoice" }] : []),
         ...(invoice && invoice.state === "posted" ? [{ href: `/print/receipt/${lead.id}`, label: "Payment receipt" }] : []),
         ...(["handover", "completed"].includes(lead.otm_stage) ? [{ href: `/print/handover/${lead.id}`, label: "Handover certificate" }] : []),
       ]} /></Card>}

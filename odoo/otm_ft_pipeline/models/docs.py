@@ -52,7 +52,7 @@ class CrmLeadDocs(models.Model):
     def otm_doc_print(self, kind, rec_id):
         rec_id = int(rec_id)
         company = self._otm_doc_company()
-        if kind in ("quotation", "handover", "receipt"):
+        if kind in ("quotation", "handover", "receipt", "invoice"):
             lead = self.browse(rec_id)
             lead.check_access("read")
             return dict(getattr(self, f"_otm_print_{kind}")(lead.sudo()), kind=kind, company=company)
@@ -79,6 +79,18 @@ class CrmLeadDocs(models.Model):
                 "customer": {"name": lead.partner_name or lead.partner_id.name or "", "phone": lead.phone or "", "address": lead.otm_address or ""},
                 "project_manager": lead.otm_project_manager_id.name or "", "sales_manager": lead.user_id.name or "", "contract": lead.otm_estimate_amount or 0.0,
                 "invoice": inv.name if inv else "", "stage": lead.otm_stage}
+
+    def _otm_print_invoice(self, lead):
+        if not any(r in self._otm_user_roles() for r in (ACC, MGR, SM)):
+            raise UserError(self.env._("Invoices are available to Accounts, Managers and Sales Managers."))
+        inv = lead.otm_invoice_id
+        if not inv:
+            raise UserError(self.env._("There is no invoice for this project yet."))
+        return {"project": lead.name, "number": inv.name if inv.state == "posted" else "DRAFT", "state": inv.state, "payment_state": inv.payment_state,
+                "date": fields.Date.to_string(inv.invoice_date or fields.Date.context_today(self)), "due": fields.Date.to_string(inv.invoice_date_due) if inv.invoice_date_due else "",
+                "customer": {"name": lead.partner_name or lead.partner_id.name or "", "phone": lead.phone or "", "email": lead.email_from or "", "address": lead.otm_address or ""},
+                "lines": [{"name": l.name, "qty": l.quantity, "price": l.price_unit, "subtotal": l.price_subtotal} for l in inv.invoice_line_ids if l.display_type == "product"],
+                "untaxed": inv.amount_untaxed, "tax": inv.amount_tax, "total": inv.amount_total, "balance": inv.amount_residual}
 
     def _otm_print_receipt(self, lead):
         if not any(r in self._otm_user_roles() for r in (ACC, MGR, SM)):

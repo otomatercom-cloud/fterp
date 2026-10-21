@@ -63,6 +63,18 @@ export function PrintDoc({ d }: { d: PrintData }) {
       </Frame>
     );
   }
+  if (d.kind === "invoice") {
+    return (
+      <Frame c={c} title={d.state === "posted" ? "Tax invoice" : "Invoice (draft)"} no={d.number} meta={[["Date", d.date], ["Due", d.due], ["Status", d.payment_state === "paid" ? "PAID" : ""]]}>
+        <div className="grid grid-cols-2 gap-4"><Party label="Bill to" name={d.customer.name} lines={[d.customer.address, d.customer.phone, d.customer.email]} /><Party label="Project" name={d.project} lines={[]} /></div>
+        <table className="w-full"><thead><tr><th className={th}>#</th><th className={th}>Description</th><th className={`${th} text-right`}>Qty</th><th className={`${th} text-right`}>Price</th><th className={`${th} text-right`}>Amount</th></tr></thead>
+          <tbody>{(d.lines as { name: string; qty: number; price: number; subtotal: number }[]).map((l, i) => <tr key={i} className="border-b border-neutral-200"><td className="py-1.5 text-neutral-500">{i + 1}</td><td className="py-1.5 pr-2">{l.name}</td><td className="py-1.5 text-right">{l.qty}</td><td className="py-1.5 text-right">{fmt(l.price)}</td><td className="py-1.5 text-right">{fmt(l.subtotal)}</td></tr>)}</tbody></table>
+        <Totals cur={cur} untaxed={d.untaxed} tax={d.tax} total={d.total} taxName="Tax" />
+        {d.balance > 0 && d.balance < d.total && <p className="text-right text-xs">Balance due: <b>{cur} {fmt(d.balance)}</b></p>}
+        <Sign left="Customer" right={`For ${c.name}`} />
+      </Frame>
+    );
+  }
   if (d.kind === "po") {
     return (
       <Frame c={c} title="Purchase order" no={d.number} meta={[["Date", d.date], ["Expected delivery", d.expected]]}>

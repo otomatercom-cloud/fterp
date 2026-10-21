@@ -6,7 +6,7 @@ import { PrintButton } from "@/components/print-button";
 import { PrintDoc } from "@/components/print-docs";
 
 export const metadata = { title: "Print document" };
-const KINDS = ["quotation", "po", "receipt", "payslip", "handover"];
+const KINDS = ["invoice", "quotation", "po", "receipt", "payslip", "handover"];
 
 export default async function PrintPage({ params }: { params: Promise<{ kind: string; id: string }> }) {
   const s = await requireSession();

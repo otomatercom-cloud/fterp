@@ -17,7 +17,7 @@ export function InvoicePanel({ leadId, stage, invoice, journals }: { leadId: num
       {invoice ? (
         <p>
           <strong>{invoice.name}</strong> · {invoice.state} · subtotal {fmt(invoice.untaxed)} + tax {fmt(invoice.tax)} = total {fmt(invoice.total)} · balance {fmt(invoice.residual)} · payment: <span className="font-medium">{invoice.payment_state.replace("_", " ")}</span>
-          {invoice.state === "posted" && <> · <a className="text-gold underline" href={`/api/leads/${leadId}/invoice-pdf`} target="_blank" rel="noreferrer">PDF</a></>}
+          {" · "}<a className="text-gold underline" href={`/print/invoice/${leadId}`} target="_blank" rel="noreferrer">Print invoice</a>
         </p>
       ) : <p className="text-muted">No invoice yet.</p>}
       {stage === "invoice_draft" && !invoice && (
