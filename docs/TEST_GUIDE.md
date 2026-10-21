@@ -177,3 +177,12 @@ Demo data adds 12 items (DEMO-IT-…) with 6 months of quotes from 3 vendors and
 3. Follow-ups appear on the Dashboard calendar and in *Today / Overdue*; a daily job notifies the Sales Manager when one is due. The lead page has Call / WhatsApp / Email buttons and a **Customer profile & follow-ups** link.
 4. `demo.manager` sees all customers and can edit any; `demo.pm1` and `demo.accounts` can view; PM/Manager can log contact; customers and Procurement/Factory have no Customers menu.
 5. Inventory demo: leads from *Procurement* stage onward use real inventory items. Open *Inventory* → an item (e.g. Marine plywood): quotes from *Procurement* and *Purchase order* sources appear next to the demo quotes; received POs show stock-in movements; items on delivered POs raise on-hand.
+
+## P. BOQ import (Excel / CSV / PDF)
+1. Login as Sales Manager, open a lead at **Estimate draft** → Estimate card.
+2. Click **Import BOQ from Excel / CSV / PDF**, choose `public/samples/boq-sample.csv` (or your own .xlsx/.pdf; header: Description, Qty, Unit, Rate).
+3. Check the preview, click **Add to estimate** (or Replace all), then **Save estimate**.
+4. Scanned (image) PDFs are not read — use Excel/CSV.
+
+## Q. Advance invoice: "No journal could be found"
+Odoo > Accounting > Configuration > Journals: company must have a journal of type **Sales** (install chart of accounts for that company first). Then retry.

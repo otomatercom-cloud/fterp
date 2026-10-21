@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Upload } from "lucide-react";
 import { saveEstimateAction } from "@/app/(dashboard)/m/crm/actions";
 import { CATEGORIES } from "@/lib/workflow/boq";
 import type { Rate } from "@/lib/odoo/leads";
@@ -14,6 +14,17 @@ export function EstimateEditor({ leadId, initial, untaxed, tax, taxName, taxRate
   const [pending, start] = useTransition();
   const upd = (i: number, p: Partial<L>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...p } : l)));
   const [pick, setPick] = useState("");
+  const [imp, setImp] = useState<L[]>();
+  const [busy, setBusy] = useState(false);
+  const upload = async (f?: File) => {
+    if (!f) return;
+    setBusy(true); setMsg(undefined);
+    const fd = new FormData(); fd.append("file", f);
+    const r = await fetch("/api/boq-import", { method: "POST", body: fd }).then((x) => x.json()).catch(() => ({ error: "Upload failed" }));
+    setBusy(false);
+    if (r.error) setMsg({ ok: false, t: r.error }); else setImp(r.lines);
+  };
+  const applyImp = (replace: boolean) => { if (imp) setLines((ls) => [...(replace ? [] : ls.filter((l) => l.name.trim() || l.price)), ...imp]); setImp(undefined); setMsg({ ok: true, t: "Lines added — review, then Save estimate." }); };
   const addRate = (id: number) => { const r = rates.find((x) => x.id === id); if (r) setLines((ls) => [...ls.filter((l) => l.name.trim() || l.price), { name: r.name, qty: 1, price: r.rate, category: r.category, unit: r.unit }]); setPick(""); };
   const byCat = lines.reduce<Record<string, number>>((a, l) => ({ ...a, [l.category]: (a[l.category] ?? 0) + l.qty * l.price }), {});
   const preview = lines.reduce((a, l) => a + l.qty * l.price, 0);
@@ -44,6 +55,24 @@ export function EstimateEditor({ leadId, initial, untaxed, tax, taxName, taxRate
           <dt className="font-semibold">Total</dt><dd className="font-semibold">{fmt(editable ? preview * (1 + taxRate / 100) : untaxed + tax)}</dd>
         </dl>
       </div>
+      {editable && (
+        <div className="rounded-md border border-dashed border-line p-3 text-sm">
+          <label className="flex cursor-pointer flex-wrap items-center gap-2 text-gold"><Upload className="size-4" /> {busy ? "Reading file…" : "Import BOQ from Excel / CSV / PDF"}
+            <input type="file" accept=".xlsx,.csv,.pdf" className="sr-only" disabled={busy} onChange={(e) => { upload(e.target.files?.[0]); e.target.value = ""; }} /></label>
+          <p className="mt-1 text-xs text-muted">Columns: Description, Qty, Unit, Rate (Category optional). You can check the lines before they are added.</p>
+          {imp && (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs">{imp.length} lines found — total {fmt(imp.reduce((a, l) => a + l.qty * l.price, 0))}</p>
+              <ul className="max-h-48 overflow-auto text-xs">{imp.map((l, i) => <li key={i} className="flex justify-between gap-2 border-b border-line py-0.5"><span className="truncate">{l.name}</span><span className="shrink-0 text-muted">{l.qty} {l.unit} × {fmt(l.price)}</span></li>)}</ul>
+              <div className="flex gap-2">
+                <button onClick={() => applyImp(false)} className="h-8 rounded-md bg-primary px-3 text-white">Add to estimate</button>
+                <button onClick={() => applyImp(true)} className="h-8 rounded-md border border-line px-3">Replace all</button>
+                <button onClick={() => setImp(undefined)} className="h-8 px-3 text-muted">Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {Object.keys(byCat).length > 1 && <p className="text-xs text-muted">By category: {Object.entries(byCat).map(([k, v]) => `${CATEGORIES[k] ?? k} ${fmt(v)}`).join(" · ")}</p>}
       {editable && <button onClick={save} disabled={pending} className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-60">{pending ? "Saving…" : "Save estimate"}</button>}
       {msg && <p role={msg.ok ? "status" : "alert"} className={`text-xs ${msg.ok ? "text-success" : "text-danger"}`}>{msg.t}</p>}

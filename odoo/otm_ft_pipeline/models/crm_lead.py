@@ -338,7 +338,13 @@ class CrmLead(models.Model):
             self.sudo().partner_id = self.env["res.partner"].sudo().create({
                 "name": self.partner_name or self.name, "phone": self.phone, "email": self.email_from,
             })
-        move = self.env["account.move"].create({
+        company = self.company_id or self.env.company
+        if not self.env["account.journal"].sudo().search_count([("type", "=", "sale"), ("company_id", "=", company.id)]):
+            raise UserError(self.env._(
+                "Company %s has no Sales journal. In Odoo open Accounting > Configuration > Journals, "
+                "create a journal of type Sales (or install a chart of accounts for this company), then try again.",
+                company.name))
+        move = self.env["account.move"].with_company(company).create({
             "move_type": "out_invoice",
             "partner_id": self.partner_id.id,
             "invoice_origin": self.name,
