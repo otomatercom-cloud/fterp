@@ -113,6 +113,11 @@ INV_ITEMS = [  # code, name, category, unit, base price, reorder level, opening 
     ("DEMO-IT-009", "LED downlight 12W", "lighting", "nos", 22, 40, 120), ("DEMO-IT-010", "Soft-close hinge", "joinery", "pair", 7.5, 100, 90),
     ("DEMO-IT-011", "Electrical cable 2.5mm 100m", "mep", "coil", 135, 6, 18), ("DEMO-IT-012", "Edge banding tape 50m", "joinery", "roll", 14, 20, 45),
 ]
+DEMO_PACKAGES = [  # code, name, category, unit, trade xmlid, labourers, crew days per unit, installation per unit, [(item code, qty per unit)]
+    ("DEMO-PK-001", "Wardrobe - marine ply, soft-close", "joinery", "sqm", "otm_ft_pipeline.trade_carpenter", 2, 0.6, 35, [("DEMO-IT-001", 0.35), ("DEMO-IT-010", 0.6), ("DEMO-IT-012", 0.25)]),
+    ("DEMO-PK-002", "False ceiling - gypsum with LED", "ceiling", "sqm", "otm_ft_pipeline.trade_gypsum", 3, 0.08, 12, [("DEMO-IT-003", 0.4), ("DEMO-IT-004", 1.2), ("DEMO-IT-009", 0.5)]),
+    ("DEMO-PK-003", "Porcelain tile flooring", "flooring", "sqm", "otm_ft_pipeline.trade_mason", 2, 0.12, 8, [("DEMO-IT-005", 1.05)]),
+]
 VENDORS = ["Al Noor Timber Trading", "Gulf Gypsum LLC", "Stonehill Marble", "Lumina Lighting"]
 
 
@@ -177,6 +182,11 @@ class CrmLead(models.Model):
                     drift = 1 + (mo - 3) * 0.012 * (1 if vi != 1 else -0.5)  # vendors move differently over time
                     env["otm.ft.price"].create({"item_id": it.id, "vendor": vn, "price": round(base * (0.96 + 0.05 * vi) * drift, 2), "date": fields.Date.context_today(self) - timedelta(days=30 * (5 - mo) + vi * 3), "source": "manual", "note": "Demo quote"})
             env["otm.ft.stock"].create({"item_id": it.id, "qty": opening, "kind": "in", "note": "Opening stock (demo)"})
+        for pcode, pname, pcat, punit, ptrade, pwk, pdays, pinst, pitems in DEMO_PACKAGES:  # reusable BOQ work packages (material + labour + installation)
+            if not env["otm.ft.package"].with_context(active_test=False).search_count([("code", "=", pcode)]):
+                trade = env.ref(ptrade, raise_if_not_found=False)
+                env["otm.ft.package"].create({"code": pcode, "name": pname, "category": pcat, "unit": punit, "trade_id": trade.id if trade else False, "workers": pwk, "days_per_unit": pdays,
+                                              "install_unit": pinst, "line_ids": [(0, 0, {"item_id": env["otm.ft.item"].search([("code", "=", ic)], limit=1).id, "qty": q}) for ic, q in pitems]})
         for v in VENDORS:  # tagged vendors so removal is clean
             if not env["res.partner"].search([("name", "=", v)], limit=1):
                 env["res.partner"].create({"name": v, "company_type": "company", "ref": DEMO_REF})
@@ -468,6 +478,7 @@ class CrmLead(models.Model):
             except Exception:
                 pass
         env["otm.ft.rate"].with_context(active_test=False).search([("code", "=like", "DEMO-%")]).unlink()
+        env["otm.ft.package"].with_context(active_test=False).search([("code", "=like", "DEMO-%")]).unlink()
         env["otm.ft.item"].with_context(active_test=False).search([("code", "=like", "DEMO-%")]).unlink()
         removed = len(leads)
         try:

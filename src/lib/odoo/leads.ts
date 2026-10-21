@@ -29,7 +29,14 @@ export function runTransition(s: Session, id: number, action: string) {
 }
 
 export type LeadDetail = Lead & { phone: string | false; email_from: string | false; description: string | false; otm_estimate_amount: number; otm_procurement_amount: number; otm_advance_amount: number; log_ids: number[] };
-export type Estimate = { order: string | false; total: number; untaxed: number; tax: number; tax_name: string | false; tax_rate: number; lines: { name: string; qty: number; price: number; subtotal: number; category: string; unit: string }[] };
+export type BoqCost = { item_id?: number | false; pkg_id?: number | false; trade_id?: number | false; workers: number; days: number; inst: number; mat?: number; margin?: number; wage?: number; price_date?: string | false; stale?: boolean };
+export type EstLine = { ref?: number; name: string; qty: number; price: number; subtotal: number; category: string; unit: string; cost?: BoqCost };
+export type CostSummary = { mandays: number; max_crew: number; trades: { trade: string; mandays: number }[]; has_cost: boolean; material?: number; labour?: number; installation?: number; cost?: number; revenue?: number; manual?: number; profit?: number; profit_pct?: number; actual_material?: number };
+export type Estimate = { order: string | false; total: number; untaxed: number; tax: number; tax_name: string | false; tax_rate: number; lines: EstLine[]; valid_until: string | false; expired: boolean; summary: CostSummary };
+export type CostPkg = { id: number; code: string; name: string; category: string; category_label: string; unit: string; trade_id: number | false; workers: number; days_per_unit: number; install_unit: number; items: { item_id: number; name: string; qty: number }[] };
+export type CostConfig = { can_cost: boolean; margin: number; buffer: number; stale_days: number; valid_days: number; trades: { id: number; name: string; rate: number }[]; items: { id: number; code: string; name: string; unit: string; category: string; has_price: boolean }[]; packages: CostPkg[] };
+export type CalcInfo = { price: number; mandays: number; stale: boolean; price_date: string | false; changed: boolean; mat?: number; wage?: number; labour?: number; unit_cost?: number; margin?: number; fresh_mat?: number } | null;
+export type PriceChange = { name: string; error?: string; old_price?: number; new_price?: number; pct?: number; old_mat?: number; new_mat?: number; old_wage?: number; new_wage?: number; stale?: boolean };
 export type LogRow = { id: number; date: string; user_id: [number, string]; action: string; to_stage: string };
 const co = (s: Session) => ({ companyIds: [s.companyId] });
 
@@ -47,7 +54,7 @@ export const roleUsers = (s: Session, role: "sales_manager" | "project_manager")
   callKw<{ id: number; name: string }[]>(s.sessionId, "crm.lead", "otm_role_users", [role], {}, co(s));
 export const createLead = (s: Session, vals: Record<string, unknown>) => callKw<number>(s.sessionId, "crm.lead", "create", [vals], {}, co(s));
 export const setLeadField = (s: Session, id: number, field: string, value: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_set_field", [[id], field, value], {}, co(s));
-export const saveEstimate = (s: Session, id: number, lines: { name: string; qty: number; price: number; category?: string; unit?: string }[]) =>
+export const saveEstimate = (s: Session, id: number, lines: unknown[]) =>
   callKw<number>(s.sessionId, "crm.lead", "otm_save_estimate", [[id], lines], {}, co(s));
 
 export type InvoiceInfo = { id: number; name: string; state: string; total: number; untaxed: number; tax: number; residual: number; payment_state: string } | false;
@@ -128,7 +135,7 @@ export const moveJoinery = (s: Session, jobId: number, stage: string) => callKw<
 export type PortalLead = { id: number; name: string; stage: string; progress: number };
 export type PortalDetail = { id: number; name: string; stage: string; progress: number; estimate: Estimate; invoice: InvoiceInfo; updates: SiteUpdate[]; installs: Install[]; snags: { id: number; name: string; status: string }[]; can_raise_snag: boolean; can_approve: boolean; can_signoff: boolean };
 export const portalProfile = (sessionId: string) =>
-  callKw<{ portal: boolean; company_id: number; company_name: string }>(sessionId, "crm.lead", "otm_portal_profile", [], {});
+  callKw<{ portal: boolean; company_id: number; company_name: string; companies: { id: number; name: string }[]; groups: string[] }>(sessionId, "crm.lead", "otm_portal_profile", [], {});
 export const portalLeads = (s: Session) => callKw<PortalLead[]>(s.sessionId, "crm.lead", "otm_portal_leads", [], {}, co(s));
 export const portalDetail = (s: Session, id: number) => callKw<PortalDetail>(s.sessionId, "crm.lead", "otm_portal_detail", [id], {}, co(s));
 export const portalAction = (s: Session, id: number, action: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_portal_action", [id, action], {}, co(s));
@@ -288,3 +295,29 @@ export const getCustomer = (s: Session, leadId: number) => callKw<CustomerDetail
 export const saveCustomer = (s: Session, leadId: number, name: string, phone: string, wa: string, email: string, address: string, person: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_customer_save", [leadId, name, phone, wa, email, address, person], {}, co(s));
 export const addContactLog = (s: Session, leadId: number, kind: string, text: string, followup: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_contact_log_add", [leadId, kind, text, followup], {}, co(s));
 export const doneFollowup = (s: Session, logId: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_contact_followup_done", [logId], {}, co(s));
+
+// ---- BOQ cost build ----
+export const getCostConfig = (s: Session, id: number) => callKw<CostConfig>(s.sessionId, "crm.lead", "otm_cost_config", [[id]], {}, co(s));
+export const getCostSetup = (s: Session) => callKw<CostConfig>(s.sessionId, "crm.lead", "otm_cost_config", [], {}, co(s));
+export const costCalc = (s: Session, id: number, lines: unknown[]) => callKw<CalcInfo[]>(s.sessionId, "crm.lead", "otm_cost_calc", [[id], lines], {}, co(s));
+export const priceCheck = (s: Session, id: number) => callKw<PriceChange[]>(s.sessionId, "crm.lead", "otm_price_check", [[id]], {}, co(s));
+export const priceRefresh = (s: Session, id: number) => callKw<number>(s.sessionId, "crm.lead", "otm_price_refresh", [[id]], {}, co(s));
+export const setValidUntil = (s: Session, id: number, day: string | false) => callKw<boolean>(s.sessionId, "crm.lead", "otm_set_valid_until", [[id], day], {}, co(s));
+export const saveCostSettings = (s: Session, m: number, b: number, st: number, v: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_cost_save_config", [m, b, st, v], {}, co(s));
+export const saveTrade = (s: Session, vals: Record<string, unknown>) => callKw<boolean>(s.sessionId, "crm.lead", "otm_save_trade", [vals], {}, co(s));
+export const archiveTrade = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_archive_trade", [id], {}, co(s));
+export const savePackage = (s: Session, vals: Record<string, unknown>) => callKw<boolean>(s.sessionId, "crm.lead", "otm_save_package", [vals], {}, co(s));
+export const archivePackage = (s: Session, id: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_archive_package", [id], {}, co(s));
+
+// ---- documents ----
+export type DocCompany = { name: string; address: string; phone: string; email: string; website: string; vat: string; logo: string; currency: string; terms: string; bank: string };
+export type DocItem = { id: number; name: string; kind: string; size: number; mimetype: string; user: string; date: string; can_delete: boolean };
+export type PrintData = { kind: string; company: DocCompany } & Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+export const docPrint = (s: Session, kind: string, id: number) => callKw<PrintData>(s.sessionId, "crm.lead", "otm_doc_print", [kind, id], {}, co(s));
+export const getDocs = (s: Session, leadId: number) => callKw<{ kinds: Record<string, string>; docs: DocItem[] }>(s.sessionId, "crm.lead", "otm_docs", [[leadId], leadId], {}, co(s));
+export const addDoc = (s: Session, leadId: number, name: string, b64: string, kind: string) => callKw<number>(s.sessionId, "crm.lead", "otm_doc_add", [[leadId], name, b64, kind], {}, co(s));
+export const getDoc = (s: Session, attId: number) => callKw<{ name: string; mimetype: string; data: string }>(s.sessionId, "crm.lead", "otm_doc_get", [attId], {}, co(s));
+export const deleteDoc = (s: Session, attId: number) => callKw<boolean>(s.sessionId, "crm.lead", "otm_doc_delete", [attId], {}, co(s));
+export type DocSettings = { terms: string; bank: string; company: string; has_logo: boolean; vat: string; address: string };
+export const getDocSettings = (s: Session) => callKw<DocSettings>(s.sessionId, "crm.lead", "otm_doc_settings", [], {}, co(s));
+export const saveDocSettings = (s: Session, terms: string, bank: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_doc_settings_save", [terms, bank], {}, co(s));

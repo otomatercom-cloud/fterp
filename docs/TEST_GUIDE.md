@@ -186,3 +186,28 @@ Demo data adds 12 items (DEMO-IT-…) with 6 months of quotes from 3 vendors and
 
 ## Q. Advance invoice: "No journal could be found"
 Odoo > Accounting > Configuration > Journals: company must have a journal of type **Sales** (install chart of accounts for that company first). Then retry.
+
+## R. Excel import / export (every section)
+Export (Excel or CSV): CRM leads, Customers, BOQ rate library, Inventory items, HR employees, Procurement POs, and the Estimate on each lead.
+Import: CRM (leads + customer contact), BOQ rate library, Inventory items, HR employees (+ estimate lines, see P).
+1. Open the section, click **Import** → **Download the Excel template**, fill rows, upload.
+2. Preview shows each row: create / update / error. Click **Import N rows**. Rows with errors are skipped and listed.
+3. Rates/items match by **Code**, employees by **Code** (existing code = update, new = create). Leads are always created.
+Permissions are the same as the normal screens (e.g. only Manager/Procurement import rates).
+
+## S. BOQ cost build (material + labour + installation + margin)
+Setup (Manager or Procurement): **Estimation & BOQ** page → "Cost build" card: set margin %, safety buffer %, labour trades (daily wage), and **work packages** (materials from Inventory + crew + installation per unit). Demo data adds 3 packages.
+1. Sales Manager: lead at Estimate draft → Estimate card → "+ Work package…" (or "+ Inventory item…") → set Qty. Price is calculated automatically (open the ▸ arrow to see labourers, days, trade, installation).
+2. Cost summary shows total **man-days** and crew; Manager/Procurement also see material, labour, installation, profit and quoted-vs-actual material.
+3. Prices maarumbol: **Check inventory prices** → table old → new → **Apply refresh** (saves an estimate revision). Old (60+ days) prices show a ⚠.
+4. After the estimate leaves Draft, the prices are locked. "Quote valid until" date is set automatically (15 days); expired quotes show a warning.
+5. Sales Manager never sees cost, wage or margin; only selling prices and man-days.
+
+## T. Documents: print + upload
+1. Admin → Settings → "Printed documents": save Terms and Bank details. Company name/address/logo/TRN come from Odoo > Settings > Companies.
+2. Open a lead with an estimate → **Documents** card → **Print quotation** → page opens → **Print / Save as PDF** (choose "Save as PDF" in the browser print dialog).
+3. Procurement → a PO → **Print PO**. HR → Payroll → a payslip → **Print**. Invoice posted + payment registered → **Payment receipt**. Stage Handover/Completed → **Handover certificate**.
+4. Documents card → choose type (contract, signed quotation, LPO, ID, vendor bill) → **Upload file** (PDF, image, Excel, Word, CSV up to 5 MB) → **Download** / delete (uploader or Manager).
+
+## U. Login (non-admin) fix
+Staff and demo users sign in using the group list read by the FT module (they cannot read ir.model.data). Needs the module upgrade; if sign-in still fails, the real Odoo error is now shown on the login screen.

@@ -10,6 +10,7 @@ CATEGORIES = [
     ("lighting", "Lighting"), ("mep", "Electrical & plumbing"), ("furniture", "Furniture"), ("other", "Other"),
 ]
 EST_ACTIONS = {
+    "refresh": "Prices refreshed",
     "submit_to_procurement": "Submitted to Procurement", "confirm_costing": "Costing confirmed", "return_to_sales": "Returned by Procurement",
     "approve": "Approved by Manager", "reject": "Rejected by Manager", "send_to_client": "Sent to client",
     "client_approve": "Approved by client", "client_requests_changes": "Client requested changes",
@@ -107,7 +108,14 @@ class CrmLeadBoq(models.Model):
     def _otm_est_lines(self):
         self.ensure_one()
         order = self.sudo().order_ids.sorted("id")[-1:]
-        return [{"name": l.name, "qty": l.product_uom_qty, "price": l.price_unit, "category": l.otm_category or "other", "unit": l.otm_unit or ""} for l in order.order_line if not l.display_type]
+        out = []
+        for l in order.order_line.filtered(lambda x: not x.display_type):
+            d = {"name": l.name, "qty": l.product_uom_qty, "price": l.price_unit, "category": l.otm_category or "other", "unit": l.otm_unit or ""}
+            if l.otm_cost_line:
+                d["cost"] = {"item_id": l.otm_item_id.id or False, "pkg_id": l.otm_pkg_id.id or False, "trade_id": l.otm_trade_id.id or False, "workers": l.otm_workers, "days": l.otm_days,
+                             "inst": l.otm_inst, "mat": l.otm_mat, "margin": l.otm_margin, "wage": l.otm_wage, "price_date": fields.Date.to_string(l.otm_price_date) if l.otm_price_date else False}
+            out.append(d)
+        return out
 
     def _otm_snapshot_estimate(self, action, lines=None, force_reason=None):
         """Keep a revision when the estimate content changed since the last one."""
@@ -135,7 +143,7 @@ class CrmLeadBoq(models.Model):
         for r in revs:
             out.append({
                 "id": r.id, "number": r.number, "reason": r.reason or "", "user": r.user_id.name or "", "date": fields.Datetime.to_string(r.create_date),
-                "untaxed": r.untaxed, "total": r.untaxed + r.tax, "lines": json.loads(r.lines_json or "[]"),
+                "untaxed": r.untaxed, "total": r.untaxed + r.tax, "lines": [{k: v for k, v in x.items() if k != "cost"} for x in json.loads(r.lines_json or "[]")],
             })
         return out
 
@@ -146,7 +154,7 @@ class CrmLeadBoq(models.Model):
         rev = self.sudo().otm_rev_ids.filtered(lambda r: r.id == int(rev_id))
         if not rev:
             raise UserError(self.env._("Revision not found."))
-        self.otm_save_estimate(json.loads(rev.lines_json))
+        self._otm_save_estimate(json.loads(rev.lines_json), trusted=True)
         return True
 
     # ---- overview for the BOQ page ----

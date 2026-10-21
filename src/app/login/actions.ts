@@ -19,10 +19,12 @@ export async function loginAction(_: LoginState, fd: FormData): Promise<LoginSta
     const portal = await portalProfile(o.sessionId).catch(() => null);
     const p = portal?.portal
       ? { companies: [{ id: portal.company_id, name: portal.company_name }], companyId: portal.company_id, groups: ["base.group_portal"] }
-      : await loadProfile(o.sessionId, o.uid);
+      : portal?.groups?.length
+        ? { companies: portal.companies, companyId: portal.company_id, groups: portal.groups }
+        : await loadProfile(o.sessionId, o.uid);
     await createSession({ sessionId: o.sessionId, uid: o.uid, name: o.name, ...p });
   } catch (e) {
-    if (e instanceof OdooError) return { error: e.code === "auth" ? "Invalid login or password" : e.code === "network" || e.code === "timeout" ? "Odoo is unreachable. Check ODOO_BASE_URL and try again." : "Sign-in failed. Contact your administrator." };
+    if (e instanceof OdooError) return { error: e.code === "auth" ? "Invalid login or password" : e.code === "network" || e.code === "timeout" ? "Odoo is unreachable. Check ODOO_BASE_URL and try again." : (console.error("[login] odoo error:", e.code, e.message), `Sign-in failed (${e.message.slice(0, 120)}). Contact your administrator.`) };
     console.error("[login] unexpected error:", e);
     return { error: `Sign-in failed (${e instanceof Error ? e.message : "unknown"}). Check server logs.` };
   }

@@ -1,3 +1,4 @@
+import { ImportExport } from "@/components/import-export";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { NAV, canSee } from "@/lib/permissions/nav";
@@ -13,6 +14,7 @@ export default async function InventoryPage() {
   return (
     <div className="space-y-4">
       <div><h1 className="text-xl font-semibold">Inventory</h1><p className="text-sm text-muted">Item master, vendor price history for comparison, and stock on hand</p></div>
+      {d?.can_edit !== undefined && <ImportExport entity="items" canImport={!!d?.can_edit} />}
       {d ? <InventoryList items={d.items} canEdit={d.can_edit} /> : <p className="glass p-4 text-sm">Inventory is not available. Check access and that the FT Pipeline module is upgraded.</p>}
     </div>
   );

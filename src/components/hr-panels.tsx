@@ -121,6 +121,7 @@ export function PayrollPanel({ month, slips, can }: { month: string; slips: Pays
               <td className="text-right">{e ? <input aria-label="Deductions" type="number" min="0" className={`${inp} h-8 w-24`} value={e.d} onChange={(x) => setEdit({ ...edit, [s.id]: { ...e, d: x.target.value } })} /> : fmt(s.deductions)}</td>
               <td className="text-right font-semibold">{fmt(s.net)}</td><td className={`text-xs ${TONE[s.status]}`}>{s.status}</td>
               <td className="whitespace-nowrap text-right text-xs">
+                <a href={`/print/payslip/${s.id}`} target="_blank" rel="noreferrer" className="mr-2 text-gold">Print</a>
                 {s.status === "draft" && can.generate && (e ? <button disabled={pending} onClick={() => run(() => editPayslipAction(s.id, Number(e.a || 0), Number(e.d || 0), s.note), () => setEdit({ ...edit, [s.id]: undefined as never }))} className="text-gold">Save</button> : <button onClick={() => setEdit({ ...edit, [s.id]: { a: String(s.allowances), d: String(s.deductions) } })} className="text-gold">Adjust</button>)}
                 {s.status === "draft" && can.approve && <> <button disabled={pending} onClick={() => run(() => payslipActionAction(s.id, "approve"))} className="text-success">Approve</button></>}
                 {s.status === "approved" && can.pay && <button disabled={pending} onClick={() => run(() => payslipActionAction(s.id, "pay"))} className="text-success">Mark paid</button>}</td></tr>

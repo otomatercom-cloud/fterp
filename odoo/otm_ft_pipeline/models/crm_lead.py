@@ -285,38 +285,66 @@ class CrmLead(models.Model):
             "tax": order.amount_tax if order else 0.0,
             "tax_name": tax.name if tax else False,
             "tax_rate": tax.amount if tax and tax.amount_type == "percent" else 0.0,
-            "lines": [
-                {"name": l.name, "qty": l.product_uom_qty, "price": l.price_unit, "subtotal": l.price_subtotal, "category": l.otm_category or "other", "unit": l.otm_unit or ""}
-                for l in order.order_line if not l.display_type
-            ],
+            "lines": [self._otm_line_dict(l) for l in order.order_line if not l.display_type],
+            "valid_until": fields.Date.to_string(self.otm_est_valid_until) if self.otm_est_valid_until else False,
+            "expired": bool(self.otm_est_valid_until and self.otm_est_valid_until < fields.Date.context_today(self)),
+            "summary": self._otm_cost_summary(order),
         }
+
+    def _otm_line_dict(self, l):
+        d = {"ref": l.id, "name": l.name, "qty": l.product_uom_qty, "price": l.price_unit, "subtotal": l.price_subtotal, "category": l.otm_category or "other", "unit": l.otm_unit or ""}
+        if l.otm_cost_line:
+            full = self._otm_cost_ok()
+            d["cost"] = {"item_id": l.otm_item_id.id or False, "pkg_id": l.otm_pkg_id.id or False, "trade_id": l.otm_trade_id.id or False, "workers": l.otm_workers, "days": l.otm_days,
+                         "inst": l.otm_inst, "price_date": fields.Date.to_string(l.otm_price_date) if l.otm_price_date else False,
+                         "stale": bool(l.otm_price_date and (fields.Date.context_today(self) - l.otm_price_date).days > self._otm_cp("otm_ft_pipeline.cost_stale_days"))}
+            if full:
+                d["cost"].update(mat=l.otm_mat, margin=l.otm_margin, wage=l.otm_wage)
+        return d
 
     def otm_save_estimate(self, lines):
         self.ensure_one()
         if SM not in self._otm_user_roles():
             raise UserError(self.env._("Only a Sales Manager can edit the estimate."))
+        return self._otm_save_estimate(lines)
+
+    def _otm_save_estimate(self, lines, trusted=False, fresh=False):
+        self.ensure_one()
         if self.otm_stage != "estimate_draft":
             raise UserError(self.env._("Click 'Create estimate' first; the estimate is editable only as a draft."))
         if not lines or len(lines) > 200:
             raise UserError(self.env._("Add between 1 and 200 estimate lines."))
         tax = self._otm_sale_tax()
+        order = self.order_ids.filtered(lambda o: o.state == "draft")[:1]
+        prev = {l.id: l for l in order.sudo().order_line}
         cmds = []
         for l in lines:
-            name, qty, price = str(l.get("name", "")).strip()[:200], float(l.get("qty", 0)), float(l.get("price", 0))
-            if not name or qty <= 0 or price < 0:
-                raise UserError(self.env._("Each line needs a description, a quantity above 0 and a price of 0 or more."))
+            name, qty = str(l.get("name", "")).strip()[:200], float(l.get("qty", 0))
+            if not name or qty <= 0:
+                raise UserError(self.env._("Each line needs a description and a quantity above 0."))
             cat = l.get("category") if l.get("category") in ("joinery", "ceiling", "flooring", "wall", "kitchen", "lighting", "mep", "furniture", "other") else "other"
-            cmds.append((0, 0, {"name": name, "product_uom_qty": qty, "price_unit": price, "tax_ids": [(6, 0, tax.ids)], "otm_category": cat, "otm_unit": str(l.get("unit") or "")[:12]}))
+            vals = {"name": name, "product_uom_qty": qty, "tax_ids": [(6, 0, tax.ids)], "otm_category": cat, "otm_unit": str(l.get("unit") or "")[:12]}
+            if l.get("cost"):
+                extra, _info = self._otm_calc_line(l, prev, trusted=trusted, fresh=fresh)
+                vals.update(extra)
+            else:
+                price = float(l.get("price", 0))
+                if price < 0:
+                    raise UserError(self.env._("Each line needs a price of 0 or more."))
+                vals["price_unit"] = price
+            cmds.append((0, 0, vals))
         if not self.partner_id:
             self.partner_id = self.env["res.partner"].create({
                 "name": self.partner_name or self.name, "phone": self.phone, "email": self.email_from,
             })
-        order = self.order_ids.filtered(lambda o: o.state == "draft")[:1]
+        self.check_access("write")  # real user must be allowed on this lead; the cost fields are group-restricted so lines are written as sudo
         if order:
-            order.order_line.unlink()
-            order.write({"order_line": cmds})
+            order.sudo().order_line.unlink()
+            order.sudo().write({"order_line": cmds})
         else:
-            order = self.env["sale.order"].create({"partner_id": self.partner_id.id, "opportunity_id": self.id, "order_line": cmds})
+            order = self.env["sale.order"].sudo().create({"partner_id": self.partner_id.id, "opportunity_id": self.id, "order_line": cmds})
+        if not self.otm_est_valid_until:
+            self.sudo().otm_est_valid_until = fields.Date.add(fields.Date.context_today(self), days=int(self._otm_cp("otm_ft_pipeline.cost_valid_days")))
         return order.amount_untaxed
 
     # ---- accounting (runs as the real user, so Odoo accounting ACLs apply) ----

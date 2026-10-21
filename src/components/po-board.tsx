@@ -33,7 +33,7 @@ export function PoBoard({ orders, canManage }: { orders: PoRow[]; canManage: boo
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <button onClick={() => setOpen(open === o.id ? null : o.id)} className="text-left"><b>{o.name}</b> <span className="text-xs text-muted">· {o.vendor} · {fmt(o.total)} incl. tax</span>
                     {o.lead_id && <> · <Link href={`/m/crm/${o.lead_id}`} className="text-xs text-gold hover:underline" onClick={(e) => e.stopPropagation()}>{o.lead}</Link></>}</button>
-                  <span className="flex flex-wrap items-center gap-1 text-[11px]">
+                  <span className="flex flex-wrap items-center gap-1 text-[11px]"><a href={`/print/po/${o.id}`} target="_blank" rel="noreferrer" className="mr-1 text-gold hover:underline">Print PO</a>
                     <span className="rounded-full border border-line px-2 py-0.5 text-muted">{STATE[o.state] ?? o.state}</span>
                     {confirmed && <span className={`rounded-full border border-line px-2 py-0.5 ${o.receipt === "received" ? "text-success" : o.overdue ? "text-danger" : "text-gold"}`}>{o.overdue ? "Overdue · " : ""}{RECV[o.receipt]}</span>}
                     {o.expected && <span className="text-muted">due {o.expected}</span>}

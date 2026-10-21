@@ -1,3 +1,4 @@
+import { ImportExport } from "@/components/import-export";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth/session";
 import { OdooError } from "@/lib/odoo/client";
@@ -25,6 +26,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2"><h1 className="text-xl font-semibold">CRM & Sales — Pipeline</h1><Link href="/m/crm/new" className="grid h-10 place-items-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary-dark">New lead</Link></div>
+      <ImportExport entity="leads" />
       <form className="flex flex-wrap gap-2" role="search">
         <input name="q" defaultValue={sp.q} placeholder="Search name or customer" aria-label="Search" className="h-10 min-w-0 flex-1 rounded-md border border-line px-3 text-sm" />
         <select name="stage" defaultValue={stage ?? ""} aria-label="Stage" className="h-10 rounded-md border border-line px-2 text-sm">

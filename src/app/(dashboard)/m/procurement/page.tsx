@@ -1,3 +1,4 @@
+import { ImportExport } from "@/components/import-export";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireSession } from "@/lib/auth/session";
@@ -32,6 +33,7 @@ export default async function ProcurementPage({ searchParams }: { searchParams: 
   return (
     <div className="space-y-4">
       <div><h1 className="text-xl font-semibold">Procurement</h1><p className="text-sm text-muted">Purchase orders of FT projects: confirm, track delivery and record goods received</p></div>
+      <ImportExport entity="pos" canImport={false} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{kpi.map(([l, v, g]) => <div key={l} className={`glass p-4 ${g}`}><p className="text-xs text-muted">{l}</p><p className="mt-1 text-2xl font-semibold">{v}</p></div>)}</div>
       {d.queue?.length > 0 && (
         <section className="glass p-5">

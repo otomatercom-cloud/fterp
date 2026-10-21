@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="trade_carpenter" model="otm.ft.trade"><field name="name">Carpenter</field><field name="daily_rate">120</field></record>
+    <record id="trade_electrician" model="otm.ft.trade"><field name="name">Electrician</field><field name="daily_rate">130</field></record>
+    <record id="trade_plumber" model="otm.ft.trade"><field name="name">Plumber</field><field name="daily_rate">110</field></record>
+    <record id="trade_painter" model="otm.ft.trade"><field name="name">Painter</field><field name="daily_rate">100</field></record>
+    <record id="trade_mason" model="otm.ft.trade"><field name="name">Mason / Tiler</field><field name="daily_rate">110</field></record>
+    <record id="trade_gypsum" model="otm.ft.trade"><field name="name">Gypsum / Ceiling fixer</field><field name="daily_rate">115</field></record>
+    <record id="trade_helper" model="otm.ft.trade"><field name="name">Helper</field><field name="daily_rate">70</field></record>
+</odoo>

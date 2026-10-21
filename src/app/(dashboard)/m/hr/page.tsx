@@ -1,3 +1,4 @@
+import { ImportExport } from "@/components/import-export";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth/session";
@@ -30,6 +31,7 @@ export default async function HrPage({ searchParams }: { searchParams: Promise<{
   return (
     <div className="space-y-4">
       <div><h1 className="text-xl font-semibold">HR &amp; Payroll</h1><p className="text-sm text-muted">Employees, daily attendance with project, leave and monthly payroll</p></div>
+      {tab === "employees" && <ImportExport entity="employees" />}
       <div className="flex flex-wrap gap-1">{tabs.map(([k, l]) => <Link key={k} href={`/m/hr?tab=${k}`} className={`rounded-full border px-4 py-1.5 text-sm ${tab === k ? "border-gold text-gold" : "border-line text-muted"}`}>{l}</Link>)}</div>
       <section className="glass p-5">{body}</section>
     </div>

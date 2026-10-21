@@ -1,3 +1,4 @@
+import { ImportExport } from "@/components/import-export";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { NAV, canSee } from "@/lib/permissions/nav";
@@ -13,6 +14,7 @@ export default async function CustomersPage() {
   return (
     <div className="space-y-4">
       <div><h1 className="text-xl font-semibold">Customers</h1><p className="text-sm text-muted">Contact details, projects and follow-ups of customers you can access</p></div>
+      <ImportExport entity="customers" canImport={false} />
       {rows ? <CustomerList rows={rows} /> : <p className="glass p-4 text-sm">Customers are not available. Check access and that the FT Pipeline module is upgraded.</p>}
     </div>
   );

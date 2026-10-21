@@ -8,7 +8,7 @@ import { getMilestones, getJournals as getJournalsFin, type MilestoneData } from
 import { PaymentSchedule } from "@/components/payment-schedule";
 import { getRates, getEstRevisions, type Rate, type EstRev } from "@/lib/odoo/leads";
 import { EstimateRevisions } from "@/components/estimate-revisions";
-import { getEstimate, getInvoice, getJournals, getLead, getCosting, getLogs, getProcurement, getPurchaseOrders, portalUserInfo, roleUsers } from "@/lib/odoo/leads";
+import { getDocs, getCostConfig, type CostConfig, getEstimate, getInvoice, getJournals, getLead, getCosting, getLogs, getProcurement, getPurchaseOrders, portalUserInfo, roleUsers } from "@/lib/odoo/leads";
 import { ACTION_LABELS, FIELD_STAGES, STAGE_LABELS, type Stage } from "@/lib/workflow/interior";
 import { ProjectGuide } from "@/components/project-guide";
 import { getInvItems, type InvItem } from "@/lib/odoo/leads";
@@ -20,6 +20,7 @@ import { InvoicePanel } from "@/components/invoice-panel";
 import { CostingEditor } from "@/components/costing-editor";
 import { PortalAccess } from "@/components/portal-access";
 import { PurchaseOrders } from "@/components/purchase-orders";
+import { DocsPanel } from "@/components/docs-panel";
 import { EstimateEditor } from "@/components/estimate-editor";
 
 const n = (x: number) => x.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -50,10 +51,12 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   try { designs = await getDesigns(s, id); } catch { /* module not upgraded yet */ }
   let invItems: InvItem[] = [];
   if (lead.otm_stage === "procurement") { try { invItems = (await getInvItems(s)).items; } catch { /* no inventory access */ } }
-  let rates: Rate[] = [], revs: EstRev[] = [];
+  let rates: Rate[] = [], revs: EstRev[] = [], cfg: CostConfig | null = null, docs: Awaited<ReturnType<typeof getDocs>> | null = null;
   try {
     if (lead.otm_stage === "estimate_draft") rates = (await getRates(s)).rates;
     revs = await getEstRevisions(s, id);
+    cfg = await getCostConfig(s, id).catch(() => null);
+    docs = await getDocs(s, id).catch(() => null);
   } catch { /* module not upgraded yet */ }
   let ms: MilestoneData | null = null, msJournals: { id: number; name: string }[] = [];
   if (["invoice_draft", "invoice_with_sales", "awaiting_advance", "payment_verification", "work_started", "handover", "completed"].includes(lead.otm_stage) && ["base.group_system", "otm_ft_pipeline.group_ft_accounts", "otm_ft_pipeline.group_ft_manager"].some((g) => s.groups.includes(g))) {
@@ -95,7 +98,12 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       {costing!.lines.length > 0 && <Card title="Availability & costing (Procurement check)"><CostingEditor key={costing!.cost + ":" + costing!.lines.length + ":" + lead.otm_stage} leadId={lead.id} data={costing!} editable={lead.otm_stage === "procurement_check"} /></Card>}
       {ms && <Card title="Payment schedule (milestones)"><PaymentSchedule key={ms.rows.map((r) => r.id + r.status).join()} leadId={lead.id} data={ms} journals={msJournals} canPlan={ms.can_plan} /></Card>}
       <Card title="Design & drawings">{canAddDesign && <div className="mb-3"><DesignAdd leadId={lead.id} /></div>}<DesignList items={designs} /></Card>
-      <Card title="Estimate"><EstimateEditor rates={rates} key={est!.lines.length + ":" + est!.total} leadId={lead.id} initial={est!.lines} untaxed={est!.untaxed} tax={est!.tax} taxName={est!.tax_name} taxRate={est!.tax_rate} editable={lead.otm_stage === "estimate_draft"} /></Card>
+      <Card title="Estimate"><EstimateEditor rates={rates} key={est!.lines.length + ":" + est!.total + ":" + est!.valid_until} leadId={lead.id} initial={est!.lines} untaxed={est!.untaxed} tax={est!.tax} taxName={est!.tax_name} taxRate={est!.tax_rate} editable={lead.otm_stage === "estimate_draft"} cfg={cfg} summary={est!.summary} validUntil={est!.valid_until} expired={est!.expired} canValidity={lead.otm_stage === "estimate_draft" && (s.groups.includes("otm_ft_pipeline.group_ft_sales_manager") || s.groups.includes("otm_ft_pipeline.group_ft_manager") || s.groups.includes("base.group_system"))} /></Card>
+      {docs && <Card title="Documents"><DocsPanel leadId={lead.id} kinds={docs.kinds} docs={docs.docs} prints={[
+        ...(est!.lines.length > 0 ? [{ href: `/print/quotation/${lead.id}`, label: "Print quotation" }] : []),
+        ...(invoice && invoice.state === "posted" ? [{ href: `/print/receipt/${lead.id}`, label: "Payment receipt" }] : []),
+        ...(["handover", "completed"].includes(lead.otm_stage) ? [{ href: `/print/handover/${lead.id}`, label: "Handover certificate" }] : []),
+      ]} /></Card>}
       {revs.length > 0 && <Card title="Estimate revisions"><EstimateRevisions leadId={lead.id} revs={revs} canRestore={lead.otm_stage === "estimate_draft" && (s.groups.includes("otm_ft_pipeline.group_ft_sales_manager") || s.groups.includes("base.group_system"))} /></Card>}
       {(lead.otm_stage === "procurement" || proc!.lines.length > 0) && <Card title="Procurement prices"><ProcurementEditor key={proc!.total + ":" + proc!.lines.length} leadId={lead.id} initial={proc!.lines} total={proc!.total} estimate={lead.otm_estimate_amount} editable={lead.otm_stage === "procurement" && pos!.orders.length === 0}  items={invItems} /></Card>}
       {(lead.otm_stage === "procurement" || pos!.orders.length > 0) && <Card title="Purchase orders"><PurchaseOrders key={pos!.pending + ":" + pos!.orders.length} leadId={lead.id} data={pos!} canCreate={lead.otm_stage === "procurement"} /></Card>}

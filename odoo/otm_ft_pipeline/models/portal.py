@@ -30,7 +30,12 @@ class CrmLead(models.Model):
     @api.model
     def otm_portal_profile(self):
         user = self.env.user
-        return {"portal": bool(user.share), "company_id": user.sudo().company_id.id, "company_name": user.sudo().company_id.name}
+        su = user.sudo()
+        groups_rs = su.all_group_ids if "all_group_ids" in su._fields else su.group_ids
+        # group xml ids are read here as sudo: internal users cannot read ir.model.data themselves
+        groups = sorted({x for ids in groups_rs._get_external_ids().values() for x in ids})
+        return {"portal": bool(user.share), "company_id": su.company_id.id, "company_name": su.company_id.name,
+                "companies": [{"id": c.id, "name": c.name} for c in su.company_ids], "groups": groups}
 
     @api.model
     def otm_portal_leads(self):

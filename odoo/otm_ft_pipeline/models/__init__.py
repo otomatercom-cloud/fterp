@@ -21,3 +21,5 @@ from . import workqueue
 from . import petty_acct
 from . import inventory
 from . import customer
+from . import boq_cost
+from . import docs

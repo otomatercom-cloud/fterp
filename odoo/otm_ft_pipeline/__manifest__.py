@@ -12,6 +12,7 @@
         "security/ir.model.access.csv",
         "views/crm_lead_views.xml",
         "data/cron.xml",
+        "data/trades.xml",
     ],
     "installable": True,
     "application": False,

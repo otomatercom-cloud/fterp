@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth/session";
 import { OdooError } from "@/lib/odoo/client";
-import { archiveRate, restoreRevision, saveRate } from "@/lib/odoo/leads";
+import { archivePackage, archiveRate, archiveTrade, restoreRevision, saveCostSettings, savePackage, saveRate, saveTrade } from "@/lib/odoo/leads";
 
 type R = { error?: string };
 const fail = (e: unknown): R => {
@@ -33,5 +33,46 @@ export async function restoreRevisionAction(leadId: number, revId: number): Prom
   const s = await requireSession();
   try { await restoreRevision(s, leadId, revId); } catch (e) { return fail(e); }
   revalidatePath("/m", "layout");
+  return {};
+}
+
+const pct = z.number().finite().min(0);
+export async function saveCostSettingsAction(m: number, b: number, st: number, v: number): Promise<R> {
+  if (![m, b, st, v].every((x) => pct.safeParse(x).success)) return { error: "Enter valid numbers" };
+  const s = await requireSession();
+  try { await saveCostSettings(s, m, b, st, v); } catch (e) { return fail(e); }
+  revalidatePath("/m/boq");
+  return {};
+}
+export async function saveTradeAction(input: unknown): Promise<R> {
+  const p = z.object({ id: z.number().int().positive().optional(), name: z.string().trim().min(1).max(60), rate: pct.max(1e6) }).safeParse(input);
+  if (!p.success) return { error: "Enter a trade name and a daily rate of 0 or more." };
+  const s = await requireSession();
+  try { await saveTrade(s, p.data); } catch (e) { return fail(e); }
+  revalidatePath("/m/boq");
+  return {};
+}
+export async function archiveTradeAction(id: number): Promise<R> {
+  if (!Number.isInteger(id) || id <= 0) return { error: "Invalid request" };
+  const s = await requireSession();
+  try { await archiveTrade(s, id); } catch (e) { return fail(e); }
+  revalidatePath("/m/boq");
+  return {};
+}
+const pkg = z.object({ id: z.number().int().positive().optional(), code: z.string().trim().min(1).max(30), name: z.string().trim().min(1).max(120), category: z.enum(CATS), unit: z.string().trim().min(1).max(12),
+  trade_id: z.number().int().positive().optional(), workers: pct.max(1000), days_per_unit: pct.max(1000), install_unit: pct.max(1e9), items: z.array(z.object({ item_id: z.number().int().positive(), qty: z.number().positive().max(1e6) })).max(50) });
+export async function savePackageAction(input: unknown): Promise<R> {
+  const p = pkg.safeParse(input);
+  if (!p.success) return { error: "Enter code, name, category, unit and valid numbers." };
+  const s = await requireSession();
+  try { await savePackage(s, p.data); } catch (e) { return fail(e); }
+  revalidatePath("/m/boq");
+  return {};
+}
+export async function archivePackageAction(id: number): Promise<R> {
+  if (!Number.isInteger(id) || id <= 0) return { error: "Invalid request" };
+  const s = await requireSession();
+  try { await archivePackage(s, id); } catch (e) { return fail(e); }
+  revalidatePath("/m/boq");
   return {};
 }

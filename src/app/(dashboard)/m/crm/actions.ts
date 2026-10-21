@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireSession } from "@/lib/auth/session";
 import { OdooError } from "@/lib/odoo/client";
-import { createInvoice, createLead, createPurchaseOrders, saveCosting, postInvoice, registerPayment, runTransition, saveEstimate, saveProcurement, setLeadField } from "@/lib/odoo/leads";
+import { deleteDoc, costCalc, priceCheck, priceRefresh, setValidUntil, type PriceChange, createInvoice, createLead, createPurchaseOrders, saveCosting, postInvoice, registerPayment, runTransition, saveEstimate, saveProcurement, setLeadField } from "@/lib/odoo/leads";
 import { FIELD_STAGES, TRANSITIONS } from "@/lib/workflow/interior";
 
 type R = { error?: string };
@@ -33,7 +33,35 @@ export async function setFieldAction(leadId: number, field: string, value: numbe
   return {};
 }
 
-const lines = z.array(z.object({ name: z.string().trim().min(1).max(200), qty: z.number().positive().max(1e6), price: z.number().min(0).max(1e9), category: z.string().max(20).optional(), unit: z.string().max(12).optional() })).min(1).max(200);
+const num = z.number().finite();
+const costZ = z.object({ item_id: z.union([z.number().int(), z.literal(false)]).optional(), pkg_id: z.union([z.number().int(), z.literal(false)]).optional(), trade_id: z.union([z.number().int(), z.literal(false)]).optional(), workers: num.min(0).max(1000), days: num.min(0).max(10000), inst: num.min(0).max(1e9), mat: num.min(0).max(1e9).optional(), margin: num.min(0).max(500).optional() });
+const lines = z.array(z.object({ ref: z.number().int().optional(), name: z.string().trim().min(1).max(200), qty: z.number().positive().max(1e6), price: z.number().min(0).max(1e9), category: z.string().max(20).optional(), unit: z.string().max(12).optional(), cost: costZ.optional() })).min(1).max(200);
+
+export async function costCalcAction(leadId: number, input: unknown): Promise<{ error?: string; info?: Awaited<ReturnType<typeof costCalc>> }> {
+  const p = lines.safeParse(input);
+  if (!id.safeParse(leadId).success || !p.success) return { error: "Check the lines: description, quantity above 0 and valid numbers." };
+  const s = await requireSession();
+  try { return { info: await costCalc(s, leadId, p.data) }; } catch (e) { return fail(e); }
+}
+export async function priceCheckAction(leadId: number): Promise<{ error?: string; rows?: PriceChange[] }> {
+  if (!id.safeParse(leadId).success) return { error: "Invalid request" };
+  const s = await requireSession();
+  try { return { rows: await priceCheck(s, leadId) }; } catch (e) { return fail(e); }
+}
+export async function priceRefreshAction(leadId: number): Promise<R> {
+  if (!id.safeParse(leadId).success) return { error: "Invalid request" };
+  const s = await requireSession();
+  try { await priceRefresh(s, leadId); } catch (e) { return fail(e); }
+  revalidatePath("/m/crm", "layout");
+  return {};
+}
+export async function validUntilAction(leadId: number, day: string): Promise<R> {
+  if (!id.safeParse(leadId).success || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: "Choose a valid date" };
+  const s = await requireSession();
+  try { await setValidUntil(s, leadId, day); } catch (e) { return fail(e); }
+  revalidatePath("/m/crm", "layout");
+  return {};
+}
 export async function saveEstimateAction(leadId: number, input: unknown): Promise<R> {
   const p = lines.safeParse(input);
   if (!id.safeParse(leadId).success || !p.success) return { error: "Each line needs a description, quantity above 0 and a price of 0 or more." };
@@ -114,6 +142,14 @@ export async function saveCostingAction(leadId: number, input: unknown): Promise
   if (!id.safeParse(leadId).success || !p.success) return { error: "Check the values: cost and lead time cannot be negative." };
   const s = await requireSession();
   try { await saveCosting(s, leadId, p.data); } catch (e) { return fail(e); }
+  revalidatePath("/m/crm", "layout");
+  return {};
+}
+
+export async function deleteDocAction(attId: number): Promise<R> {
+  if (!id.safeParse(attId).success) return { error: "Invalid request" };
+  const s = await requireSession();
+  try { await deleteDoc(s, attId); } catch (e) { return fail(e); }
   revalidatePath("/m/crm", "layout");
   return {};
 }
