@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 
 from odoo import api, fields, models
@@ -524,9 +525,13 @@ class CrmLead(models.Model):
 
     # ---- role management for administrators (used by the Settings screen) ----
     @api.model
+    def _otm_can_admin_users(self):
+        if not (self.env.user.has_group("base.group_system") or self.env.user.has_group(ROLE_GROUPS[MGR])):
+            raise UserError(self.env._("Only an administrator or Manager can manage users and roles."))
+
+    @api.model
     def otm_users_roles(self):
-        if not self.env.user.has_group("base.group_system"):
-            raise UserError(self.env._("Only an administrator can manage roles."))
+        self._otm_can_admin_users()
         users = self.env["res.users"].sudo().search([("share", "=", False), ("active", "=", True)], order="name")
         groups = {role: self.env.ref(xmlid) for role, xmlid in ROLE_GROUPS.items()}
         return [
@@ -536,16 +541,34 @@ class CrmLead(models.Model):
 
     @api.model
     def otm_set_user_role(self, user_id, role, enabled):
-        if not self.env.user.has_group("base.group_system"):
-            raise UserError(self.env._("Only an administrator can manage roles."))
+        self._otm_can_admin_users()
         xmlid = ROLE_GROUPS.get(role)
         if not xmlid:
             raise UserError(self.env._("Unknown role."))
         user = self.env["res.users"].sudo().browse(int(user_id))
         if not user.exists() or user.share:
             raise UserError(self.env._("Select an internal user."))
+        if user.has_group("base.group_system") and not self.env.user.has_group("base.group_system"):
+            raise UserError(self.env._("Only an administrator can change an administrator's roles."))
         user.write({"group_ids": [(4 if enabled else 3, self.env.ref(xmlid).id)]})
         return True
+
+    @api.model
+    def otm_create_user(self, name, login, password, roles):
+        """Create an internal staff user with pipeline roles only (never system/admin rights)."""
+        self._otm_can_admin_users()
+        name, login = str(name or "").strip()[:120], str(login or "").strip().lower()[:120]
+        if not name or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", login):
+            raise UserError(self.env._("Enter the full name and a valid email address as the login."))
+        if len(str(password or "")) < 8:
+            raise UserError(self.env._("The password must be at least 8 characters."))
+        Users = self.env["res.users"].sudo().with_context(active_test=False)
+        if Users.search_count([("login", "=", login)]):
+            raise UserError(self.env._("A user with this login already exists."))
+        gids = [self.env.ref("base.group_user").id] + [self.env.ref(ROLE_GROUPS[r]).id for r in (roles or []) if r in ROLE_GROUPS]
+        user = Users.create({"name": name, "login": login, "email": login, "password": password, "group_ids": [(6, 0, gids)],
+                             "company_id": self.env.company.id, "company_ids": [(6, 0, [self.env.company.id])]})
+        return user.id
 
     # ---- project tasks & snag list ----
     def _otm_can_manage_project(self):

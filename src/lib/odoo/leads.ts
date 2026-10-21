@@ -321,3 +321,4 @@ export const deleteDoc = (s: Session, attId: number) => callKw<boolean>(s.sessio
 export type DocSettings = { terms: string; bank: string; company: string; has_logo: boolean; vat: string; address: string };
 export const getDocSettings = (s: Session) => callKw<DocSettings>(s.sessionId, "crm.lead", "otm_doc_settings", [], {}, co(s));
 export const saveDocSettings = (s: Session, terms: string, bank: string) => callKw<boolean>(s.sessionId, "crm.lead", "otm_doc_settings_save", [terms, bank], {}, co(s));
+export const createStaffUser = (s: Session, name: string, login: string, password: string, roles: string[]) => callKw<number>(s.sessionId, "crm.lead", "otm_create_user", [name, login, password, roles], {}, co(s));

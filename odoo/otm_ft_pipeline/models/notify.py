@@ -207,8 +207,8 @@ class CrmLeadNotify(models.Model):
     # ---- admin settings ----
     @api.model
     def _otm_admin_only(self):
-        if not self.env.user.has_group("base.group_system"):
-            raise UserError(self.env._("Only an administrator can change notification settings."))
+        if not (self.env.user.has_group("base.group_system") or self.env.user.has_group("otm_ft_pipeline.group_ft_manager")):
+            raise UserError(self.env._("Only an administrator or Manager can change notification settings."))
 
     @api.model
     def otm_notify_settings(self):

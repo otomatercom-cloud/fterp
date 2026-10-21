@@ -211,3 +211,8 @@ Setup (Manager or Procurement): **Estimation & BOQ** page → "Cost build" card:
 
 ## U. Login (non-admin) fix
 Staff and demo users sign in using the group list read by the FT module (they cannot read ir.model.data). Needs the module upgrade; if sign-in still fails, the real Odoo error is now shown on the login screen.
+
+## V. Manager = full access
+After the module upgrade the **Manager** role includes every pipeline role (Sales Manager, Project Manager, Procurement, Accounts, Manufacturing) plus purchase/invoicing rights, so a Manager can run every stage. Manager also gets the **Settings** page: assign pipeline roles, **create staff users**, notification and document settings. Demo load/remove stays administrator-only. Sign out and in again after the upgrade.
+1. Login `demo.manager@ftdemo.com` → all menus visible, including Settings.
+2. Settings → "Create a staff user" (name, email, password 8+, roles) → new user can sign in.

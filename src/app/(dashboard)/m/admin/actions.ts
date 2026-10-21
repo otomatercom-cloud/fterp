@@ -6,7 +6,7 @@ import { loadDemo, removeDemo } from "@/lib/odoo/leads";
 
 type R = { ok?: string; error?: string };
 const fail = (e: unknown): R => {
-  if (e instanceof OdooError) return { error: e.code === "access" ? "Only an administrator can do this." : e.message };
+  if (e instanceof OdooError) return { error: e.code === "access" ? "Only an administrator or Manager can do this." : e.message };
   throw e;
 };
 
@@ -28,7 +28,7 @@ export async function removeDemoAction(): Promise<R> {
   } catch (e) { return fail(e); }
 }
 
-import { setUserRole } from "@/lib/odoo/leads";
+import { createStaffUser, setUserRole } from "@/lib/odoo/leads";
 const ROLES = new Set(["sales_manager", "manager", "project_manager", "procurement", "accounts", "manufacturing"]);
 export async function setUserRoleAction(userId: number, role: string, enabled: boolean): Promise<{ error?: string }> {
   if (!Number.isInteger(userId) || userId <= 0 || !ROLES.has(role)) return { error: "Invalid request" };
@@ -55,4 +55,13 @@ export async function testNotifyAction(phone: string): Promise<R> {
 export async function saveDocSettingsAction(fd: FormData): Promise<R> {
   const s = await requireSession();
   try { await saveDocSettings(s, String(fd.get("terms") ?? "").slice(0, 3000), String(fd.get("bank") ?? "").slice(0, 1000)); revalidatePath("/m/admin"); return { ok: "Saved." }; } catch (e) { return fail(e); }
+}
+
+export async function createUserAction(fd: FormData): Promise<R> {
+  const name = String(fd.get("name") ?? "").trim().slice(0, 120), login = String(fd.get("login") ?? "").trim().slice(0, 120), password = String(fd.get("password") ?? "").slice(0, 128);
+  const roles = fd.getAll("roles").map(String).filter((r) => ROLES.has(r));
+  if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(login)) return { error: "Enter the full name and a valid email address as the login." };
+  if (password.length < 8) return { error: "The password must be at least 8 characters." };
+  const s = await requireSession();
+  try { await createStaffUser(s, name, login, password, roles); revalidatePath("/m/admin"); return { ok: `User ${login} created. They can sign in now.` }; } catch (e) { return fail(e); }
 }

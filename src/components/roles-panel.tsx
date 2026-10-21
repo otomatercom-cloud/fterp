@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { setUserRoleAction } from "@/app/(dashboard)/m/admin/actions";
+import { createUserAction, setUserRoleAction } from "@/app/(dashboard)/m/admin/actions";
 import { ROLE_LABEL } from "@/lib/workflow/roles";
 import type { UserRoles } from "@/lib/odoo/leads";
 
@@ -8,6 +8,7 @@ export function RolesPanel({ users }: { users: UserRoles[] }) {
   const [state, setState] = useState(users);
   const [err, setErr] = useState<string>();
   const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<{ ok?: string; error?: string }>({});
   const toggle = (u: UserRoles, role: string, on: boolean) => start(async () => {
     const r = await setUserRoleAction(u.id, role, on);
     if (r.error) return setErr(r.error);
@@ -34,6 +35,19 @@ export function RolesPanel({ users }: { users: UserRoles[] }) {
         </tbody>
       </table>
       {err && <p role="alert" className="text-sm text-danger">{err}</p>}
+      <form action={(fd) => start(async () => { const r = await createUserAction(fd); setMsg(r); })} className="space-y-2 border-t border-line pt-3">
+        <h3 className="text-sm font-semibold">Create a staff user</h3>
+        <div className="flex flex-wrap gap-2">
+          <input name="name" required placeholder="Full name" aria-label="Full name" className="h-9 min-w-0 flex-1 rounded border border-line bg-transparent px-2 text-sm" />
+          <input name="login" type="email" required placeholder="Login (email)" aria-label="Login email" className="h-9 min-w-0 flex-1 rounded border border-line bg-transparent px-2 text-sm" />
+          <input name="password" type="password" required minLength={8} autoComplete="new-password" placeholder="Password (8+)" aria-label="Password" className="h-9 w-40 rounded border border-line bg-transparent px-2 text-sm" />
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs">{Object.entries(ROLE_LABEL).map(([k, l]) => <label key={k} className="flex items-center gap-1"><input type="checkbox" name="roles" value={k} className="size-4 accent-[#e8bf7e]" /> {l}</label>)}</div>
+        <button disabled={pending} className="h-9 rounded bg-primary px-3 text-sm text-white disabled:opacity-50">Create user</button>
+        {msg.error && <p role="alert" className="text-sm text-danger">{msg.error}</p>}
+        {msg.ok && <p className="text-sm text-success">{msg.ok}</p>}
+        <p className="text-xs text-muted">Refresh the page after creating to see the new user in the list. Staff get pipeline roles only, never Odoo administrator rights.</p>
+      </form>
     </div>
   );
 }

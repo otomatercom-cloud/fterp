@@ -28,7 +28,7 @@ export const NAV: NavItem[] = [
 
 export function canSee(item: NavItem, userGroups: string[]): boolean {
   if (userGroups.includes("base.group_system")) return true;
-  if (item.slug === "admin") return false;
+  if (item.slug === "admin") return userGroups.includes("otm_ft_pipeline.group_ft_manager"); // Manager: users, notifications, documents (demo tools stay admin-only)
   if (!item.groups || item.groups.length === 0) return userGroups.includes("base.group_user");
   return item.groups.some((g) => userGroups.includes(g));
 }

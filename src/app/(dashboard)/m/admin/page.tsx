@@ -11,14 +11,17 @@ export default async function AdminPage() {
   const s = await requireSession();
   const item = NAV.find((n) => n.slug === "admin");
   if (!item || !canSee(item, s.groups)) notFound();
-  let count = 0, unavailable = false, users: UserRoles[] = [], cfg: NotifySettings = { email: false, wa_url: "", has_token: false, has_meta_secret: false };
-  let docCfg: DocSettings | null = null;
-  try { docCfg = await getDocSettings(s); } catch { /* module not upgraded */ }
-  try { [count, users, cfg] = await Promise.all([demoStatus(s).then((d) => d.count), usersRoles(s), getNotifySettings(s)]); } catch { unavailable = true; }
+  const isAdmin = s.groups.includes("base.group_system");
+  let users: UserRoles[] = [], cfg: NotifySettings | null = null, docCfg: DocSettings | null = null, demo: number | null = null;
+  [users, cfg, docCfg, demo] = await Promise.all([
+    usersRoles(s).catch(() => [] as UserRoles[]), getNotifySettings(s).catch(() => null), getDocSettings(s).catch(() => null),
+    isAdmin ? demoStatus(s).then((d) => d.count).catch(() => null) : Promise.resolve(null),
+  ]);
+  const unavailable = users.length === 0 && !cfg && !docCfg;
   return (
     <div className="max-w-2xl space-y-4">
       <h1 className="text-xl font-semibold">Settings</h1>
-      {unavailable ? <p className="glass p-4 text-sm">Demo tools need an administrator account and the FT Pipeline module installed.</p> : <><RolesPanel users={users} /><NotifySettingsPanel cfg={cfg} />{docCfg && <DocSettingsPanel cfg={docCfg} />}<DemoPanel count={count} /></>}
+      {unavailable ? <p className="glass p-4 text-sm">Settings need the FT Pipeline module upgraded in Odoo, and an administrator or Manager login.</p> : <><RolesPanel users={users} />{cfg && <NotifySettingsPanel cfg={cfg} />}{docCfg && <DocSettingsPanel cfg={docCfg} />}{demo !== null && <DemoPanel count={demo} />}</>}
     </div>
   );
 }
